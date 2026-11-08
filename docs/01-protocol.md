@@ -36,6 +36,16 @@ App 启动（或手动调用 checkForUpdateAsync）
 [req] GET /api/manifest platform=ios runtime=1.0.0
 ```
 
+### 三个版本号别混淆
+
+协议里有三个名字像"版本"的字段，管的完全是不同的事：
+
+| 头 | 方向 | 版本号管什么 |
+|---|---|---|
+| `expo-protocol-version: 1` | 请求 + 响应 | 整个 expo-updates 协议（manifest 结构、指令、multipart 等）的版本 |
+| `expo-sfv-version: 0` | 仅响应 | 仅指标识结构化头部（SFV，RFC 8941 Structured Field Values）用法的版本。`expo-manifest-filters`、`expo-server-defined-headers`、`expo-signature` 这些头的值都是 SFV 字典；协议规定该头 MUST 为 `0` |
+| `expo-runtime-version: 1.0.0` | 请求（响应 manifest 里回显） | 你自己 App 的原生运行时版本（见 [03](03-client-config.md)），与协议版本无关 |
+
 ## 第 1 步的响应：三种情况
 
 响应统一为 `multipart/mixed`，并带回响应头 `expo-protocol-version: 1`、`expo-sfv-version: 0`、`cache-control: private, max-age=0`。
