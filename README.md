@@ -5,6 +5,7 @@
 ## 结构
 
 ```
+demo.sh            可重复执行的端到端验证脚本（./demo.sh [--skip-build]）
 ota-demo/          Expo 应用（blank-typescript + expo-updates）
   app.json         updates.url 指向 http://192.168.0.105:4747/api/manifest, runtimeVersion "1.0.0"
   App.tsx          BUNDLE_LABEL / BUNDLE_COLOR 是热更可视化标记；含 useUpdates 状态面板和手动检查/下载/重启按钮
@@ -17,6 +18,17 @@ artifacts/         验证截图
 ```
 
 ## 快速开始
+
+### 一键端到端 demo（推荐）
+
+```bash
+./demo.sh                # 全流程: 预检 -> 构建 -> 全新安装 -> v1 基线 -> 发布 v2 -> 验证热更 -> 回滚 -> 断言
+./demo.sh --skip-build   # 复用上次构建, 约 40 秒跑完
+```
+
+断言方式：服务器日志（manifest 响应 / 新 bundle 下载 / 回滚指令）+ 截图主色采样（本机 python3 有 Pillow 时自动启用像素级断言）。每轮的截图和服务器日志保存在 `artifacts/demo-<时间戳>/`。脚本会自动检测 app.json 的 updates.url 是否与当前局域网 IP 一致（不一致则改写并强制重新构建）。
+
+### 手动分步操作
 
 ```bash
 # 1. 启动更新服务器（如需改端口/IP，设 HOSTNAME 环境变量）
