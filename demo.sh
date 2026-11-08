@@ -126,7 +126,7 @@ restore_v1_marker   # 保证从已提交的 v1 基线出发
 # 启动更新服务器（独占端口）
 lsof -ti ":$PORT" | xargs kill 2>/dev/null || true
 sleep 1
-node "$SERVER_DIR/server.js" > "$LOG" 2>&1 &
+node "$SERVER_DIR/server.ts" > "$LOG" 2>&1 &
 SERVER_PID=$!
 for i in $(seq 1 20); do curl -sf "http://127.0.0.1:$PORT/health" >/dev/null && break; sleep 0.5; done
 curl -sf "http://127.0.0.1:$PORT/health" >/dev/null || { echo "更新服务器启动失败，日志见 $LOG"; exit 1; }

@@ -1,5 +1,5 @@
 /**
- * 极简 expo-updates 协议 v1 局域网更新服务器（零依赖，Node.js 原生实现）。
+ * 极简 expo-updates 协议 v1 局域网更新服务器（零运行时依赖，Node.js 原生 TypeScript 直跑）。
  * 协议行为参考官方示例 https://github.com/expo/custom-expo-updates-server
  *
  * 目录约定:
@@ -9,33 +9,74 @@
  *     ├── _expo/static/...                  bundle 与资源
  *     └── rollback                          (可选) 存在该文件即表示回滚到内置包
  *
- * 运行: node server.js   (默认 0.0.0.0:4747, HOSTNAME 用于生成资源 URL)
+ * 运行: node server.ts   (默认 0.0.0.0:4747, HOSTNAME 用于生成资源 URL)
  */
 
-const http = require('http');
-const crypto = require('crypto');
-const fs = require('fs');
-const fsp = require('fs/promises');
-const path = require('path');
-const mime = require('./mime');
+import http from 'node:http';
+import crypto from 'node:crypto';
+import fs from 'node:fs';
+import fsp from 'node:fs/promises';
+import path from 'node:path';
+import { getType } from './mime.ts';
 
-const PORT = process.env.PORT || 4747;
+const PORT = Number(process.env.PORT || 4747);
 const HOSTNAME = process.env.HOSTNAME || 'http://192.168.0.105:4747';
-const UPDATES_DIR = path.join(__dirname, 'updates');
+const UPDATES_DIR = path.join(import.meta.dirname, 'updates');
 
-class NoUpdateAvailableError extends Error {}
+// ---------- 类型定义 ----------
+
+/** expo export 产物 metadata.json 的结构（只声明用到的部分） */
+interface ExpoExportMetadata {
+  fileMetadata: Record<string, PlatformFileMetadata>;
+}
+
+interface PlatformFileMetadata {
+  /** launchAsset（JS bundle）相对更新包目录的路径 */
+  bundle: string;
+  /** 普通资源列表 */
+  assets: { path: string; ext: string }[];
+}
+
+/** 协议 manifest 中的单个资源描述 */
+interface AssetMetadata {
+  hash: string;
+  key: string;
+  fileExtension: string;
+  contentType: string;
+  url: string;
+}
+
+/** expo-updates 协议 v1 的更新 manifest */
+interface UpdateManifest {
+  id: string;
+  createdAt: string;
+  runtimeVersion: string;
+  assets: AssetMetadata[];
+  launchAsset: AssetMetadata;
+  metadata: Record<string, never>;
+  extra: { expoClient: unknown };
+}
+
+interface MultipartPart {
+  name: string;
+  contentType: string;
+  body: string;
+  extraHeaders?: Record<string, string>;
+}
 
 // ---------- 工具函数（移植自官方示例 expo/custom-expo-updates-server） ----------
 
-function getBase64URLEncoding(base64) {
+function getBase64URLEncoding(base64: string): string {
   return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
-function convertSHA256HashToUUID(value) {
+/** 把 sha256 十六进制哈希截断为 UUID 形式，作为更新 ID */
+function convertSHA256HashToUUID(value: string): string {
   return `${value.slice(0, 8)}-${value.slice(8, 12)}-${value.slice(12, 16)}-${value.slice(16, 20)}-${value.slice(20, 32)}`;
 }
 
-async function getLatestUpdateBundlePathForRuntimeVersionAsync(runtimeVersion) {
+/** 找到指定 runtimeVersion 下最新（时间戳目录名最大）的一次发布 */
+async function getLatestUpdateBundlePathForRuntimeVersionAsync(runtimeVersion: string): Promise<string> {
   const dirForRuntimeVersion = path.join(UPDATES_DIR, runtimeVersion);
   if (!fs.existsSync(dirForRuntimeVersion)) {
     throw new Error(`Unsupported runtime version: ${runtimeVersion}`);
@@ -49,7 +90,12 @@ async function getLatestUpdateBundlePathForRuntimeVersionAsync(runtimeVersion) {
   return path.join(dirForRuntimeVersion, dirs[0]);
 }
 
-async function getMetadataAsync(updateBundlePath) {
+/** 读取更新包的 metadata.json；其哈希即更新 ID，birthtime 即 commitTime */
+async function getMetadataAsync(updateBundlePath: string): Promise<{
+  metadataJson: ExpoExportMetadata;
+  createdAt: string;
+  id: string;
+}> {
   const metadataPath = path.join(updateBundlePath, 'metadata.json');
   const buf = await fsp.readFile(metadataPath);
   const stat = await fsp.stat(metadataPath);
@@ -60,18 +106,29 @@ async function getMetadataAsync(updateBundlePath) {
   };
 }
 
-async function getExpoConfigAsync(updateBundlePath) {
+/** 读取发布时生成的 expoConfig.json，塞进 manifest 的 extra.expoClient */
+async function getExpoConfigAsync(updateBundlePath: string): Promise<unknown> {
   const buf = await fsp.readFile(path.join(updateBundlePath, 'expoConfig.json'));
   return JSON.parse(buf.toString('utf-8'));
 }
 
-async function getAssetMetadataAsync({ updateBundlePath, filePath, ext, isLaunchAsset, runtimeVersion, platform }) {
+interface GetAssetMetadataOptions {
+  updateBundlePath: string;
+  filePath: string;
+  ext: string | null;
+  isLaunchAsset: boolean;
+  runtimeVersion: string;
+  platform: string;
+}
+
+async function getAssetMetadataAsync(opts: GetAssetMetadataOptions): Promise<AssetMetadata> {
+  const { updateBundlePath, filePath, ext, isLaunchAsset, runtimeVersion, platform } = opts;
   const assetFilePath = path.join(updateBundlePath, filePath);
   const asset = await fsp.readFile(assetFilePath);
   const assetHash = getBase64URLEncoding(crypto.createHash('sha256').update(asset).digest('base64'));
   const key = crypto.createHash('md5').update(asset).digest('hex');
-  const keyExtensionSuffix = isLaunchAsset ? 'bundle' : ext;
-  const contentType = isLaunchAsset ? 'application/javascript' : mime.getType(ext);
+  const keyExtensionSuffix = isLaunchAsset ? 'bundle' : ext!;
+  const contentType = isLaunchAsset ? 'application/javascript' : getType(ext);
   return {
     hash: assetHash,
     key,
@@ -83,9 +140,10 @@ async function getAssetMetadataAsync({ updateBundlePath, filePath, ext, isLaunch
 
 // ---------- multipart 响应 ----------
 
-function sendMultipart(res, protocolVersion, parts) {
+/** 按协议返回 multipart/mixed 响应体（manifest 或 directive 二选一） */
+function sendMultipart(res: http.ServerResponse, protocolVersion: number, parts: MultipartPart[]): void {
   const boundary = '----expoUpdatesBoundary' + crypto.randomBytes(8).toString('hex');
-  const chunks = [];
+  const chunks: Buffer[] = [];
   for (const part of parts) {
     chunks.push(Buffer.from(
       `--${boundary}\r\n` +
@@ -107,7 +165,8 @@ function sendMultipart(res, protocolVersion, parts) {
   res.end(Buffer.concat(chunks));
 }
 
-function sendNoUpdateAvailable(res, protocolVersion) {
+/** 协议 v1 指令: 没有可用更新（客户端已是最新时返回） */
+function sendNoUpdateAvailable(res: http.ServerResponse, protocolVersion: number): void {
   sendMultipart(res, protocolVersion, [
     {
       name: 'directive',
@@ -117,7 +176,8 @@ function sendNoUpdateAvailable(res, protocolVersion) {
   ]);
 }
 
-function sendRollback(res, protocolVersion, rollbackStat) {
+/** 协议 v1 指令: 回滚到 App 内置 bundle */
+function sendRollback(res: http.ServerResponse, protocolVersion: number, rollbackStat: fs.Stats): void {
   sendMultipart(res, protocolVersion, [
     {
       name: 'directive',
@@ -130,52 +190,57 @@ function sendRollback(res, protocolVersion, rollbackStat) {
   ]);
 }
 
+function sendJson(res: http.ServerResponse, status: number, body: unknown): void {
+  res.writeHead(status, { 'content-type': 'application/json' });
+  res.end(JSON.stringify(body));
+}
+
 // ---------- 接口 ----------
 
-async function handleManifest(req, res, url) {
+/** GET /api/manifest —— 客户端启动/手动检查更新时请求 */
+async function handleManifest(req: http.IncomingMessage, res: http.ServerResponse, url: URL): Promise<void> {
   const headers = req.headers;
-  const protocolVersion = parseInt(headers['expo-protocol-version'] ?? url.searchParams.get('protocol-version') ?? '0', 10);
-  const platform = headers['expo-platform'] ?? url.searchParams.get('platform');
-  const runtimeVersion = headers['expo-runtime-version'] ?? url.searchParams.get('runtime-version');
+  const protocolVersion = parseInt(
+    (headers['expo-protocol-version'] as string) ?? url.searchParams.get('protocol-version') ?? '0',
+    10,
+  );
+  const platform = (headers['expo-platform'] as string) ?? url.searchParams.get('platform');
+  const runtimeVersion = (headers['expo-runtime-version'] as string) ?? url.searchParams.get('runtime-version');
 
   if (platform !== 'ios' && platform !== 'android') {
-    res.writeHead(400, { 'content-type': 'application/json' });
-    res.end(JSON.stringify({ error: 'Unsupported platform. Expected either ios or android.' }));
+    sendJson(res, 400, { error: 'Unsupported platform. Expected either ios or android.' });
     return;
   }
   if (!runtimeVersion) {
-    res.writeHead(400, { 'content-type': 'application/json' });
-    res.end(JSON.stringify({ error: 'No runtimeVersion provided.' }));
+    sendJson(res, 400, { error: 'No runtimeVersion provided.' });
     return;
   }
   if (headers['expo-expect-signature']) {
-    res.writeHead(400, { 'content-type': 'application/json' });
-    res.end(JSON.stringify({ error: 'Code signing requested but this lab server does not sign. Remove codeSigning config from the client.' }));
+    sendJson(res, 400, { error: 'Code signing requested but this lab server does not sign. Remove codeSigning config from the client.' });
     return;
   }
 
-  let updateBundlePath;
+  let updateBundlePath: string;
   try {
     updateBundlePath = await getLatestUpdateBundlePathForRuntimeVersionAsync(runtimeVersion);
   } catch (error) {
-    res.writeHead(404, { 'content-type': 'application/json' });
-    res.end(JSON.stringify({ error: error.message }));
+    sendJson(res, 404, { error: (error as Error).message });
     return;
   }
 
-  const currentUpdateId = headers['expo-current-update-id'];
+  const currentUpdateId = headers['expo-current-update-id'] as string | undefined;
   const dirContents = await fsp.readdir(updateBundlePath);
   const isRollback = dirContents.includes('rollback');
 
+  // 回滚发布: 目录里有 rollback 标记文件
   if (isRollback) {
-    const embeddedUpdateId = headers['expo-embedded-update-id'];
+    const embeddedUpdateId = headers['expo-embedded-update-id'] as string | undefined;
     if (!embeddedUpdateId) {
-      res.writeHead(400, { 'content-type': 'application/json' });
-      res.end(JSON.stringify({ error: 'Invalid Expo-Embedded-Update-ID request header specified.' }));
+      sendJson(res, 400, { error: 'Invalid Expo-Embedded-Update-ID request header specified.' });
       return;
     }
     if (protocolVersion >= 1 && currentUpdateId === embeddedUpdateId) {
-      console.log(`[manifest] -> noUpdateAvailable (客户端已运行内置包, 无需回滚)`);
+      console.log('[manifest] -> noUpdateAvailable (客户端已运行内置包, 无需回滚)');
       sendNoUpdateAvailable(res, protocolVersion);
       return;
     }
@@ -195,14 +260,14 @@ async function handleManifest(req, res, url) {
 
   const expoConfig = await getExpoConfigAsync(updateBundlePath);
   const platformMetadata = metadataJson.fileMetadata[platform];
-  const manifest = {
+  const manifest: UpdateManifest = {
     id: updateUUID,
     createdAt,
     runtimeVersion,
     assets: await Promise.all(
       (platformMetadata.assets || []).map((asset) =>
-        getAssetMetadataAsync({ updateBundlePath, filePath: asset.path, ext: asset.ext, isLaunchAsset: false, runtimeVersion, platform })
-      )
+        getAssetMetadataAsync({ updateBundlePath, filePath: asset.path, ext: asset.ext, isLaunchAsset: false, runtimeVersion, platform }),
+      ),
     ),
     launchAsset: await getAssetMetadataAsync({
       updateBundlePath,
@@ -224,22 +289,21 @@ async function handleManifest(req, res, url) {
   ]);
 }
 
-async function handleAssets(req, res, url) {
+/** GET /api/assets —— 客户端按 manifest 里的 url 逐个下载 bundle 和资源 */
+async function handleAssets(_req: http.IncomingMessage, res: http.ServerResponse, url: URL): Promise<void> {
   const assetName = url.searchParams.get('asset');
   const runtimeVersion = url.searchParams.get('runtimeVersion');
   const platform = url.searchParams.get('platform');
 
   if (!assetName || !runtimeVersion || (platform !== 'ios' && platform !== 'android')) {
-    res.writeHead(400, { 'content-type': 'application/json' });
-    res.end(JSON.stringify({ error: 'Expected query params: asset, runtimeVersion, platform(ios|android).' }));
+    sendJson(res, 400, { error: 'Expected query params: asset, runtimeVersion, platform(ios|android).' });
     return;
   }
 
   // assetName 是相对 updates/ 目录的路径, 防止目录穿越
   const assetPath = path.resolve(UPDATES_DIR, assetName);
   if (!assetPath.startsWith(UPDATES_DIR) || !fs.existsSync(assetPath)) {
-    res.writeHead(404, { 'content-type': 'application/json' });
-    res.end(JSON.stringify({ error: `Asset "${assetName}" does not exist.` }));
+    sendJson(res, 404, { error: `Asset "${assetName}" does not exist.` });
     return;
   }
 
@@ -251,7 +315,7 @@ async function handleAssets(req, res, url) {
   const assetMeta = (platformMetadata.assets || []).find((a) => a.path === relativeToBundle);
 
   const data = await fsp.readFile(assetPath);
-  const contentType = isLaunchAsset ? 'application/javascript' : (assetMeta ? mime.getType(assetMeta.ext) : 'application/octet-stream');
+  const contentType = isLaunchAsset ? 'application/javascript' : assetMeta ? getType(assetMeta.ext) : 'application/octet-stream';
   console.log(`[assets]  -> ${path.basename(assetPath)} (${data.length} bytes, ${contentType})`);
   res.writeHead(200, { 'content-type': contentType, 'content-length': data.length });
   res.end(data);
@@ -259,29 +323,29 @@ async function handleAssets(req, res, url) {
 
 // ---------- 服务器入口 ----------
 
-const server = http.createServer(async (req, res) => {
-  const url = new URL(req.url, HOSTNAME);
-  const t0 = Date.now();
-  console.log(`[req] ${req.method} ${url.pathname} platform=${req.headers['expo-platform'] ?? '-'} runtime=${req.headers['expo-runtime-version'] ?? '-'}`);
-  try {
-    if (req.method === 'GET' && url.pathname === '/api/manifest') {
-      await handleManifest(req, res, url);
-    } else if (req.method === 'GET' && url.pathname === '/api/assets') {
-      await handleAssets(req, res, url);
-    } else if (req.method === 'GET' && (url.pathname === '/' || url.pathname === '/health')) {
-      res.writeHead(200, { 'content-type': 'application/json' });
-      res.end(JSON.stringify({ ok: true, updatesDir: UPDATES_DIR, hostname: HOSTNAME }));
-    } else {
-      res.writeHead(404, { 'content-type': 'application/json' });
-      res.end(JSON.stringify({ error: 'Not found' }));
+const server = http.createServer((req, res) => {
+  void (async () => {
+    const url = new URL(req.url ?? '/', HOSTNAME);
+    const t0 = Date.now();
+    console.log(`[req] ${req.method} ${url.pathname} platform=${req.headers['expo-platform'] ?? '-'} runtime=${req.headers['expo-runtime-version'] ?? '-'}`);
+    try {
+      if (req.method === 'GET' && url.pathname === '/api/manifest') {
+        await handleManifest(req, res, url);
+      } else if (req.method === 'GET' && url.pathname === '/api/assets') {
+        await handleAssets(req, res, url);
+      } else if (req.method === 'GET' && (url.pathname === '/' || url.pathname === '/health')) {
+        sendJson(res, 200, { ok: true, updatesDir: UPDATES_DIR, hostname: HOSTNAME });
+      } else {
+        sendJson(res, 404, { error: 'Not found' });
+      }
+    } catch (error) {
+      console.error('[error]', error);
+      if (!res.headersSent) res.writeHead(500, { 'content-type': 'application/json' });
+      res.end(JSON.stringify({ error: String((error as Error)?.message || error) }));
+    } finally {
+      console.log(`[req] done in ${Date.now() - t0}ms`);
     }
-  } catch (error) {
-    console.error('[error]', error);
-    if (!res.headersSent) res.writeHead(500, { 'content-type': 'application/json' });
-    res.end(JSON.stringify({ error: String(error && error.message || error) }));
-  } finally {
-    console.log(`[req] done in ${Date.now() - t0}ms`);
-  }
+  })();
 });
 
 server.listen(PORT, '0.0.0.0', () => {

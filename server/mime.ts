@@ -1,5 +1,5 @@
 // 极简 mime 映射, 覆盖 expo export 常见资源类型
-const MAP = {
+const MAP: Record<string, string> = {
   js: 'application/javascript',
   bundle: 'application/javascript',
   hbc: 'application/javascript',
@@ -21,8 +21,8 @@ const MAP = {
   txt: 'text/plain',
 };
 
-exports.getType = function getType(ext) {
+export function getType(ext: string | null | undefined): string {
   if (!ext) return 'application/octet-stream';
   const key = String(ext).replace(/^\./, '').toLowerCase();
   return MAP[key] || 'application/octet-stream';
-};
+}

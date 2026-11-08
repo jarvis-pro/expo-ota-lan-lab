@@ -24,12 +24,12 @@ if [ "${1:-}" = "rollback" ]; then
 fi
 
 echo "==> 导出更新包 (expo export)"
-(cd "$APP_DIR" && npx expo export)
+(cd "$APP_DIR" && pnpm exec expo export)
 
 echo "==> 拷贝到 updates/$RUNTIME_VERSION/$TS"
 cp -r "$APP_DIR/dist/"* "$TARGET/"
 
 echo "==> 生成 expoConfig.json"
-node "$SERVER_DIR/exportConfig.js" "$APP_DIR" > "$TARGET/expoConfig.json"
+node "$SERVER_DIR/exportConfig.ts" "$APP_DIR" > "$TARGET/expoConfig.json"
 
 echo "发布完成: updates/$RUNTIME_VERSION/$TS"
