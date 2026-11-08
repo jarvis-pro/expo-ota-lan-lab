@@ -1,0 +1,9 @@
+node_modules/
+dist/
+ios/
+android/
+server/updates/
+artifacts/
+.ios-build/
+.expo/
+*.log
