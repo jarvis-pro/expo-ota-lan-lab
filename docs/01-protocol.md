@@ -40,6 +40,53 @@ App 启动（或手动调用 checkForUpdateAsync）
 
 响应统一为 `multipart/mixed`，并带回响应头 `expo-protocol-version: 1`、`expo-sfv-version: 0`、`cache-control: private, max-age=0`。
 
+### multipart/mixed 是什么（附实测抓包）
+
+`multipart/*` 是 MIME 家族的一类格式：一个消息体里装**多个独立部件**，每个部件有自己的类型和头部（`multipart/form-data` 表单上传就是同族兄弟）。协议 v1 用它是为了**一次往返同时返回清单（manifest）和控制指令（directive/extensions）**，未来扩展只需多加一个部件。
+
+格式就三样东西：
+
+1. **boundary**：响应头里声明的随机分隔符（`server.ts` 用 `crypto.randomBytes(8)` 现生成，保证不与部件内容撞车）；
+2. **部件**：`--boundary` 开头 → 若干部件头（`content-disposition` 的 `name` 是客户端拆包的依据）→ 空行 → 部件体；
+3. **结尾**：`--boundary--`（多一对横杠）表示消息结束。
+
+实测抓包（启动 `node server/server.ts` 后执行，行尾的 `^M` 是 `\r`，即部件之间用 CRLF 分隔）：
+
+```bash
+curl -s -D - -H 'expo-platform: ios' -H 'expo-runtime-version: 1.0.0' \
+     -H 'expo-protocol-version: 1' http://127.0.0.1:4747/api/manifest
+```
+
+```
+HTTP/1.1 200 OK
+expo-protocol-version: 1
+expo-sfv-version: 0
+cache-control: private, max-age=0
+content-type: multipart/mixed; boundary=----expoUpdatesBoundary95951af4be0668d3
+
+------expoUpdatesBoundary95951af4be0668d3^M        ← 部件 1 开始
+content-disposition: form-data; name="manifest"^M
+content-type: application/json; charset=utf-8^M
+^M                                                 ← 空行之后是部件体
+{"id":"39a65ab6-746c-bf20-6d43-aaffd2dc571d","createdAt":"2026-11-08T19:46:56.883Z",
+ "runtimeVersion":"1.0.0",
+ "assets":[{"hash":"xThCHSC7UgsybMbMBs766ysuisQTmoOJJIXhzMFNvjY",
+            "key":"0f0ec44820f7122cad516ee32b3cb232",          ← 资源热更演示的 png
+            "fileExtension":".png","contentType":"image/png",
+            "url":"http://192.168.0.105:4747/api/assets?asset=..."}],
+ "launchAsset":{...},"metadata":{},"extra":{...}}^M
+------expoUpdatesBoundary95951af4be0668d3^M        ← 部件 2 开始（extensions）
+content-disposition: form-data; name="extensions"^M
+content-type: application/json^M
+^M
+{"assetRequestHeaders":{}}^M
+------expoUpdatesBoundary95951af4be0668d3--^M      ← 双横杠结尾，消息结束
+```
+
+对照实现：`server.ts` 的 `sendMultipart()` 是唯一出口，`manifest` / `directive` / `extensions` 都只是往里塞的部件；回滚响应则只含一个 `directive` 部件。
+
+### 三种响应内容
+
 **① 有新更新** —— body 含 `manifest` 部分（`content-type: application/json`）：
 
 ```json
@@ -54,7 +101,7 @@ App 启动（或手动调用 checkForUpdateAsync）
     "contentType": "application/javascript",
     "url": "http://192.168.0.105:4747/api/assets?asset=..."
   },
-  "assets": [],                                    // 图片/字体等其他资源，结构同上
+  "assets": [],                                    // 图片/字体等其他资源，结构同上（见上文的抓包实例与 [08](08-asset-hot-update.md)）
   "metadata": {},
   "extra": { "expoClient": { /* 发布时的 app.json 展开结果 */ } }
 }

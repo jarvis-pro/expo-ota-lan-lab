@@ -11,6 +11,7 @@
 | [05-构建与运行](05-build-and-run.md) | iOS Release 构建、模拟器运行、Android 扩展路径 |
 | [06-排坑指南](06-troubleshooting.md) | 本次实测踩过的坑与解决办法 |
 | [07-端到端验证](07-verification.md) | demo.sh 的设计、断言方式、实测结果 |
+| [08-资源文件热更](08-asset-hot-update.md) | require 引入的图片等资源如何随更新分发、下载与解析，与内容热更的差异 |
 
 ## 一页速览
 

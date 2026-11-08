@@ -3,10 +3,10 @@
 #
 # 流程:
 #   0. 预检（LAN IP 与 app.json 一致、依赖就绪）并启动更新服务器
-#   1. 发布回滚指令作为基线 -> 全新安装并启动 App -> 断言运行在 v1 内置包
-#   2. 修改 App.tsx 标记为 v2 -> 发布 -> 重启 App -> 断言新 bundle 经 OTA 下载
-#   3. 发布回滚指令 -> 重启 App -> 断言收到 rollBackToEmbedded
-#   4. 还原 App.tsx、关闭服务器、输出结论与截图目录
+#   1. 发布回滚指令作为基线 -> 全新安装并启动 App -> 断言运行在 v1 内置包（内容 + 绿色资源）
+#   2. 修改 App.tsx 标记为 v2 并换橙色资源 -> 发布 -> 重启 App -> 断言新 bundle 与新资源经 OTA 下载
+#   3. 发布回滚指令 -> 重启 App -> 断言收到 rollBackToEmbedded（回到 v1 内置包 + 绿色资源）
+#   4. 还原 App.tsx 与资源、关闭服务器、输出结论与截图目录
 #
 # 用法: ./demo.sh [--skip-build]
 #   --skip-build   跳过 xcodebuild（上次构建产物还在时用，改动 App.tsx 不需要重新构建原生包）
@@ -50,6 +50,10 @@ set_marker() { # $1=文案 $2=颜色
 }
 restore_v1_marker() { set_marker 'v1（内置包）' '#1e90ff'; }
 
+# 生成 v1/v2 版本的演示资源图 ota-demo/assets/ota-art.png（改资源 = 产生新资源哈希 = 客户端重新下载）
+set_art_variant() { python3 "$ROOT/scripts/make-ota-art.py" --variant "$1" >/dev/null; }
+restore_v1_art() { set_art_variant v1; }
+
 restart_app() {
   xcrun simctl terminate "$UDID" "$BUNDLE_ID" >/dev/null 2>&1 || true
   sleep 1
@@ -91,9 +95,31 @@ sys.exit(0 if ok else 1)
 EOF
 }
 
+# 全图扫描是否存在大面积 v1 绿色 / v2 橙色资源块（资源块位置随机型变化，直接全图统计）
+check_art() { # $1=截图 $2=期望(green|orange)
+  python3 -c "import PIL" 2>/dev/null || { note "无 Pillow, 跳过资源颜色断言（以服务器日志为准）"; return 0; }
+  python3 - "$1" "$2" <<'EOF'
+import sys
+from PIL import Image
+img, expect = sys.argv[1], sys.argv[2]
+target = {"green": (0x2E, 0xCC, 0x71), "orange": (0xF5, 0xA6, 0x23)}[expect]
+im = Image.open(img).convert("RGB")
+w, h = im.size
+hits = 0
+for y in range(0, h, 4):
+    for x in range(0, w, 4):
+        r, g, b = im.getpixel((x, y))
+        if abs(r - target[0]) < 45 and abs(g - target[1]) < 45 and abs(b - target[2]) < 45:
+            hits += 1
+print(f"全图匹配 {expect} 像素 {hits} 个")
+sys.exit(0 if hits > 400 else 1)
+EOF
+}
+
 cleanup() {
-  echo "==> 收尾: 还原 App.tsx 为 v1 标记, 关闭更新服务器"
+  echo "==> 收尾: 还原 App.tsx 与资源为 v1, 关闭更新服务器"
   restore_v1_marker
+  restore_v1_art
   [ -n "${SERVER_PID:-}" ] && kill "$SERVER_PID" 2>/dev/null
 }
 trap cleanup EXIT
@@ -122,6 +148,7 @@ pass "模拟器 UDID: $UDID"
 
 [ -d "$APP_DIR/ios/Pods" ] || { echo "缺少 ios/Pods，请先按 README 执行 prebuild + pod install"; exit 1; }
 restore_v1_marker   # 保证从已提交的 v1 基线出发
+restore_v1_art
 
 # 启动更新服务器（独占端口）
 lsof -ti ":$PORT" | xargs kill 2>/dev/null || true
@@ -162,16 +189,23 @@ else
 fi
 shot 01-v1-embedded.png 4
 check_color "$OUT_DIR/01-v1-embedded.png" blue && pass "截图为 v1 蓝色" || fail "截图颜色与 v1 不符"
+check_art "$OUT_DIR/01-v1-embedded.png" green && pass "截图含 v1 绿色资源块（内置资源生效）" || fail "未找到 v1 绿色资源块"
 
 # ---------- 2. 发布 v2 热更 ----------
 
-echo "==> [2/4] 发布 v2, App 应经 OTA 下载并自动生效"
+echo "==> [2/4] 发布 v2（换 JS 标记 + 换资源图）, App 应经 OTA 下载 bundle 和资源并自动生效"
 V2_LABEL="v2（OTA 热更 $(date +%H:%M:%S)）"   # 文案带时间, 保证每次 demo 产生不同的 bundle 哈希
 set_marker "$V2_LABEL" '#e63946'
+set_art_variant v2   # 换成橙色 ASSET V2, 资源哈希变化 -> 客户端会重新下载这张资源
 PUB_OUT=$("$SERVER_DIR/publish.sh")
 UPDATE_REL=$(echo "$PUB_OUT" | grep 发布完成 | awk '{print $2}')
 NEW_BUNDLE=$(node -p "require('$SERVER_DIR/$UPDATE_REL/metadata.json').fileMetadata.ios.bundle.split('/').pop()")
-note "新更新: $UPDATE_REL (bundle: $NEW_BUNDLE)"
+NEW_ASSET=$(node -e "
+  const a = require('$SERVER_DIR/$UPDATE_REL/metadata.json').fileMetadata.ios.assets.find((x) => x.ext === 'png');
+  if (!a) { console.error('更新包里没有 png 资源'); process.exit(1); }
+  console.log(a.path.split('/').pop());
+") || { echo "解析资源文件失败"; exit 1; }
+note "新更新: $UPDATE_REL (bundle: $NEW_BUNDLE, 资源: $NEW_ASSET)"
 mark_log
 restart_app
 if wait_log "$NEW_BUNDLE" 25; then
@@ -179,8 +213,14 @@ if wait_log "$NEW_BUNDLE" 25; then
 else
   fail "未观察到新 bundle 下载, 日志: $LOG"
 fi
+if wait_log "$NEW_ASSET" 25; then
+  pass "服务器日志确认新资源经局域网下载: $NEW_ASSET"
+else
+  fail "未观察到新资源下载, 日志: $LOG"
+fi
 shot 02-v2-ota.png 6
 check_color "$OUT_DIR/02-v2-ota.png" red && pass "截图为 v2 红色（热更已上屏）" || fail "截图颜色与 v2 不符"
+check_art "$OUT_DIR/02-v2-ota.png" orange && pass "截图含 v2 橙色资源块（资源热更已上屏）" || fail "未找到 v2 橙色资源块"
 
 # ---------- 3. 回滚到内置包 ----------
 
@@ -195,6 +235,7 @@ else
 fi
 shot 03-rollback-v1.png 6
 check_color "$OUT_DIR/03-rollback-v1.png" blue && pass "截图为 v1 蓝色（回滚已上屏）" || fail "截图颜色与回滚预期不符"
+check_art "$OUT_DIR/03-rollback-v1.png" green && pass "截图回到 v1 绿色资源块（资源随回滚还原）" || fail "回滚后未找到 v1 绿色资源块"
 
 # ---------- 4. 结论 ----------
 
