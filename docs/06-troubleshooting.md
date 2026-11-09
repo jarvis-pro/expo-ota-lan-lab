@@ -52,7 +52,7 @@ bash scripts/patch-maven-mirror.sh
 
 **现象**：改了代码又改回去再发布，客户端无反应。
 
-**原因**：更新 ID = metadata.json 内容哈希；内容相同则 ID 相同，客户端的 `expo-current-update-id` 匹配后服务器返回 `noUpdateAvailable`。demo.sh 通过在 v2 文案里嵌入时间戳保证每次发布 ID 唯一。
+**原因**：更新 ID = metadata.json 内容哈希；内容相同则 ID 相同，客户端的 `expo-current-update-id` 匹配后服务器返回 `noUpdateAvailable`。验证时可在 v2 文案里嵌入时间戳保证每次发布 ID 唯一。
 
 ## 7. pnpm monorepo 下 React Native 找不到模块
 

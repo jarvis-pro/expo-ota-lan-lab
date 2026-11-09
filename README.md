@@ -2,7 +2,7 @@
 
 在局域网内验证 `expo-updates`（Expo SDK 58）自托管 OTA 热更的最小实验室：不依赖 EAS，自己的 Mac 就是更新服务器。
 
-**完整知识点文档见 [docs/](docs/README.md)**（协议解析 / 架构 / 客户端配置 / 服务器实现 / 构建运行 / 排坑指南 / 验证记录）。
+**完整知识点文档见 [docs/](docs/README.md)**（协议解析 / 架构 / 客户端配置 / 服务器实现 / 构建运行 / 排坑指南）。
 
 ## 结构（pnpm monorepo）
 
@@ -10,7 +10,6 @@
 package.json          根编排: pnpm server / pnpm publish / pnpm demo / pnpm typecheck
 pnpm-workspace.yaml   workspace: ota-demo + server
 .npmrc                node-linker=hoisted（RN/Metro/CocoaPods 兼容关键，见 docs/06）
-demo.sh               可重复执行的端到端验证脚本（./demo.sh [--skip-build]）
 docs/                 全部知识文档（按编号阅读）
 scripts/              link-hoisted-modules.sh / patch-maven-mirror.sh（postinstall 自动执行）
                       make-ota-art.py（生成资源热更演示图 ota-art.png 的 v1/v2 变体）
@@ -29,9 +28,6 @@ artifacts/            验证截图与日志
 
 ```bash
 pnpm install     # 安装全部依赖（postinstall 自动打 Maven 镜像补丁 + 建 node_modules 符号链接）
-
-pnpm demo        # 一键端到端验证: 构建 -> v1 基线 -> 发布 v2 -> 热更断言 -> 回滚断言（约 3 分钟）
-                 # 复用上次构建: ./demo.sh --skip-build（约 40 秒）
 
 pnpm server      # 单独启动更新服务器
 pnpm publish     # 改完 ota-demo 的 JS 后发布一个热更（回滚: node server/publish.ts rollback）
@@ -81,5 +77,3 @@ node server/publish.ts rollback
 | `node server/publish.ts rollback` → 冷启动 | 收到 `rollBackToEmbedded` 指令，回到 v1 内置包，资源图同步恢复绿色 |
 
 资源热更的机制与注意事项见 [docs/08-资源文件热更](docs/08-asset-hot-update.md)。
-
-详见 [docs/07-端到端验证](docs/07-verification.md)。

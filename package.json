@@ -10,7 +10,6 @@
   "scripts": {
     "server": "pnpm --filter expo-ota-lan-server start",
     "publish": "node server/publish.ts",
-    "demo": "bash demo.sh",
     "typecheck": "pnpm -r run typecheck",
     "postinstall": "bash scripts/link-hoisted-modules.sh && bash scripts/patch-maven-mirror.sh"
   }

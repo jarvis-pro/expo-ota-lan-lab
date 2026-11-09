@@ -30,7 +30,7 @@ Release 构建时，"Bundle React Native code and images" 阶段会把当时被�
 
 - `scripts/make-ota-art.py`：用 Pillow 生成 `ota-art.png` 的两个变体——v1 绿色 "ASSET V1"（git 提交版，进内置包），v2 橙色 "ASSET V2"（发布热更前临时生成）。故意与背景蓝/红不同色，截图可单独断言。
 - `App.tsx`：把这张图渲染在界面上，并显示 `Image.resolveAssetSource` 解析出的实际加载路径。
-- `demo.sh` 第 2 步：发布前切到 v2 资源 → 从 `metadata.json` 解析出资源文件名 → 断言服务器日志里该资源经局域网下载 → 全图扫描截图里出现大面积橙色；第 3 步回滚后断言回到绿色。
+- 手动验证：发布热更前用 `make-ota-art.py` 切到 v2 资源 → 发布后从 `metadata.json` 解析出资源文件名 → 观察服务器日志确认该资源经局域网下载 → 截图里应出现大面积橙色；回滚后应恢复绿色。
 
 ## 实测结果（iPhone 模拟器, iOS 27.0）
 

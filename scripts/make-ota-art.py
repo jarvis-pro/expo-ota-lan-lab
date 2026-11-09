@@ -5,7 +5,7 @@
   python3 scripts/make-ota-art.py [--variant v1|v2]
 
   v1（默认，随 git 提交）: 绿色块 + 斜纹 + "ASSET V1"
-  v2（demo.sh 发布热更前临时生成）: 橙色块 + 斜纹 + "ASSET V2"
+  v2（发布热更前临时生成）: 橙色块 + 斜纹 + "ASSET V2"
 
 v1/v2 用与背景色（蓝/红）不同的颜色，截图里可以单独断言这块资源是否真的被换掉。
 依赖 Pillow（运行时自带）。

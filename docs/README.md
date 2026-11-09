@@ -10,7 +10,6 @@
 | [04-更新服务器实现](04-server-guide.md) | server.ts 代码解读、publish.ts 发布流程 |
 | [05-构建与运行](05-build-and-run.md) | iOS Release 构建、模拟器运行、Android 扩展路径 |
 | [06-排坑指南](06-troubleshooting.md) | 本次实测踩过的坑与解决办法 |
-| [07-端到端验证](07-verification.md) | demo.sh 的设计、断言方式、实测结果 |
 | [08-资源文件热更](08-asset-hot-update.md) | require 引入的图片等资源如何随更新分发、下载与解析，与内容热更的差异 |
 
 ## 一页速览
@@ -26,4 +25,4 @@
 
 - 客户端：`ota-demo/`（Expo SDK 58 + expo-updates，`app.json` 指向局域网服务器）
 - 服务器：`server/`（TypeScript，Node 24 直跑，零运行时依赖）
-- 验证：`./demo.sh` 一键端到端（基线 → 热更 → 回滚）
+- 发布：`node server/publish.ts`（基线 / 热更 / 回滚均由它产出）

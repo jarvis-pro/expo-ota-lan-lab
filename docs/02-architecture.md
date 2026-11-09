@@ -21,7 +21,6 @@ expo-ota-lan-lab/
 ├── scripts/             # 辅助脚本 (如 Maven 镜像补丁)
 ├── docs/                # 本文档目录
 ├── artifacts/           # 验证产物: 截图 + 服务器日志 (gitignore)
-└── demo.sh              # 一键端到端验证脚本
 ```
 
 ## 一次热更的完整数据流
@@ -47,7 +46,7 @@ expo-ota-lan-lab/
 | 更新 ID = metadata.json 的哈希 | 内容寻址，同内容同 ID，客户端可安全去重 |
 | commitTime 取文件的 birthtime | 与官方示例一致；选择策略依赖它判断新旧 |
 | 回滚 = 目录里放 `rollback` 空文件 | 官方示例的约定，服务器转成 `rollBackToEmbedded` 指令 |
-| 端口 4747 / IP 写死在 app.json | 局域网实验室从简；demo.sh 会在 IP 变化时自动改写并强制重建 |
+| 端口 4747 / IP 写死在 app.json | 局域网实验室从简；IP 变化时需改写 app.json 并重新构建 |
 
 ## 与生产级方案的差距
 

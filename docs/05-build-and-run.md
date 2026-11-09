@@ -52,7 +52,7 @@ node server/publish.ts      # 终端 2: 发布
 `updates.url` 在构建期烧进原生包。本机 IP 变了（如换 Wi-Fi）：
 
 ```bash
-# 改 ota-demo/app.json 的 updates.url，然后必须重新构建（demo.sh 会自动检测并处理）
+# 改 ota-demo/app.json 的 updates.url，然后必须重新构建
 ```
 
 ## Android 扩展路径（本实验室未实测）
