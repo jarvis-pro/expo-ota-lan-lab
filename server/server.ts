@@ -300,9 +300,11 @@ async function handleAssets(_req: http.IncomingMessage, res: http.ServerResponse
     return;
   }
 
-  // assetName 是相对 updates/ 目录的路径, 防止目录穿越
+  // assetName 是相对 updates/ 目录的路径, 防止目录穿越。
+  // 注意用 UPDATES_DIR + path.sep 做前缀: 纯字符串 startsWith 会把同名前缀的
+  // 兄弟目录（如 server/updates-evil/）误判为目录内路径。
   const assetPath = path.resolve(UPDATES_DIR, assetName);
-  if (!assetPath.startsWith(UPDATES_DIR) || !fs.existsSync(assetPath)) {
+  if (!assetPath.startsWith(UPDATES_DIR + path.sep) || !fs.existsSync(assetPath)) {
     sendJson(res, 404, { error: `Asset "${assetName}" does not exist.` });
     return;
   }
