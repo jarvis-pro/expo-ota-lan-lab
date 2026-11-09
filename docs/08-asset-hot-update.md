@@ -39,5 +39,3 @@ Release 构建时，"Bundle React Native code and images" 阶段会把当时被�
 | v1 基线 | 内置 | 绿色资源块，路径指向 App bundle 内 |
 | OTA v2 | 下载 `index-*.hbc`（约 1.6MB） | 下载约 6KB 的橙色 png，界面变橙色资源块，路径指向更新目录 |
 | 回滚 | 收到 `rollBackToEmbedded` | 资源随回滚恢复为内置绿色版，不再产生下载 |
-
-断言输出见 `artifacts/demo-*/` 最新一次运行。

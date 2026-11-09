@@ -3,7 +3,6 @@ dist/
 ios/
 android/
 apps/server/updates/
-artifacts/
 .ios-build/
 .expo/
 *.log

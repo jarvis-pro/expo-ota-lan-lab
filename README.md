@@ -22,7 +22,6 @@ apps/server/          【workspace 包】TypeScript 更新服务器（协议 v1,
   publish.ts          一键发布：expo export → updates/<runtimeVersion>/<时间戳>/ → 生成 expo-config.json（最新时间戳生效）
   updates/            已发布的更新包
 packages/             预留：共享库（目前为空）
-artifacts/            验证截图与日志
 ```
 
 ## 快速开始

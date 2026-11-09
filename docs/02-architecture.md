@@ -21,8 +21,7 @@ expo-ota-lan-lab/
 │               └── rollback          # (可选) 存在即表示"回滚到内置包"
 ├── packages/            # 预留: 共享库 (目前为空)
 ├── scripts/             # 辅助脚本 (如 Maven 镜像补丁)
-├── docs/                # 本文档目录
-├── artifacts/           # 验证产物: 截图 + 服务器日志 (gitignore)
+└── docs/                # 本文档目录
 ```
 
 ## 一次热更的完整数据流
