@@ -17,6 +17,7 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import fsp from 'node:fs/promises';
 import path from 'node:path';
+import zlib from 'node:zlib';
 import { getType } from './mime.ts';
 
 const PORT = Number(process.env.PORT || 4747);
@@ -136,6 +137,31 @@ async function getAssetMetadataAsync(opts: GetAssetMetadataOptions): Promise<Ass
     contentType,
     url: `${HOSTNAME}/api/assets?asset=${encodeURIComponent(path.relative(UPDATES_DIR, assetFilePath))}&runtimeVersion=${runtimeVersion}&platform=${platform}`,
   };
+}
+
+/** 文件格式内部已压缩过的类型, 再 gzip 只会浪费 CPU */
+const INCOMPRESSIBLE_TYPE = /^(image\/(?!svg\+xml)|video\/|audio\/|application\/(zip|gzip))/;
+
+/** 小于该阈值不压: gzip 本身有 ~20 字节开销, 小文件压了可能反而变大 */
+const MIN_COMPRESS_SIZE = 1024;
+
+/**
+ * 传输层 gzip 内容协商。
+ * 只影响网络传输字节数; 客户端 HTTP 栈透明解压, 落盘的仍是原始文件,
+ * manifest 里的 sha256 校验的也是压缩前内容, 所以此函数不改变任何协议语义。
+ */
+function maybeCompress(
+  data: Buffer,
+  contentType: string,
+  acceptEncoding: string | undefined,
+): { body: Buffer; encoding: 'gzip' | null } {
+  if (!acceptEncoding?.includes('gzip')) return { body: data, encoding: null };
+  if (data.length < MIN_COMPRESS_SIZE || INCOMPRESSIBLE_TYPE.test(contentType)) {
+    return { body: data, encoding: null };
+  }
+  const gz = zlib.gzipSync(data, { level: 6 });
+  if (gz.length >= data.length) return { body: data, encoding: null };
+  return { body: gz, encoding: 'gzip' };
 }
 
 // ---------- multipart 响应 ----------
@@ -290,7 +316,7 @@ async function handleManifest(req: http.IncomingMessage, res: http.ServerRespons
 }
 
 /** GET /api/assets —— 客户端按 manifest 里的 url 逐个下载 bundle 和资源 */
-async function handleAssets(_req: http.IncomingMessage, res: http.ServerResponse, url: URL): Promise<void> {
+async function handleAssets(req: http.IncomingMessage, res: http.ServerResponse, url: URL): Promise<void> {
   const assetName = url.searchParams.get('asset');
   const runtimeVersion = url.searchParams.get('runtimeVersion');
   const platform = url.searchParams.get('platform');
@@ -318,9 +344,16 @@ async function handleAssets(_req: http.IncomingMessage, res: http.ServerResponse
 
   const data = await fsp.readFile(assetPath);
   const contentType = isLaunchAsset ? 'application/javascript' : assetMeta ? getType(assetMeta.ext) : 'application/octet-stream';
-  console.log(`[assets]  -> ${path.basename(assetPath)} (${data.length} bytes, ${contentType})`);
-  res.writeHead(200, { 'content-type': contentType, 'content-length': data.length });
-  res.end(data);
+  const { body, encoding } = maybeCompress(data, contentType, req.headers['accept-encoding']);
+  console.log(
+    `[assets]  -> ${path.basename(assetPath)} (${data.length} bytes${encoding ? ` -> gzip ${body.length} bytes, -${Math.round((1 - body.length / data.length) * 100)}%` : ''}, ${contentType})`,
+  );
+  res.writeHead(200, {
+    'content-type': contentType,
+    'content-length': body.length,
+    ...(encoding ? { 'content-encoding': encoding, vary: 'accept-encoding' } : {}),
+  });
+  res.end(body);
 }
 
 // ---------- 服务器入口 ----------
