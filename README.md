@@ -19,7 +19,8 @@ apps/ota-demo/        【workspace 包】Expo 应用（blank-typescript + expo-u
   assets/ota-art.png  演示用资源：v1 绿色 / v2 橙色，热更时应随更新包变色
 apps/server/          【workspace 包】TypeScript 更新服务器（协议 v1, Node 24 直跑 .ts, 零运行时依赖）
   server.ts           GET /api/manifest（multipart/mixed）、GET /api/assets、GET /health
-  publish.ts          一键发布：expo export → updates/<runtimeVersion>/<时间戳>/ → 生成 expo-config.json（最新时间戳生效）
+  publish.ts          一键发布：expo export → updates/<runtimeVersion>/<时间戳>/ → 生成 expo-config.json（最新时间戳生效）；
+                      发布成功后自动裁剪历史版本，仅保留最近 3 个（含回滚发布）
   updates/            已发布的更新包
 packages/             预留：共享库（目前为空）
 ```
@@ -58,6 +59,9 @@ node apps/server/publish.ts rollback
 ## 关键机制与坑（本次实测）
 
 - **协议**：客户端 GET `updates.url`，带 `expo-platform` / `expo-runtime-version` / `expo-protocol-version: 1` / `expo-current-update-id` 等请求头；服务器返回 `multipart/mixed`（manifest 部分）。客户端已在最新更新时返回 `noUpdateAvailable` 指令。参考官方示例 `expo/custom-expo-updates-server`。
+- **资源级去重（客户端行为）**：manifest 中每个 asset 带内容哈希 `key`，客户端只下载本地不存在的资源——未改动的图片/字体不重复走网络，但 JS bundle 内容一变就全量重下（expo-updates 无 bundle 差分）。
+- **gzip 传输压缩**：`/api/assets` 按 `Accept-Encoding` 协商 gzip，仅压 ≥1KB 的可压缩类型（图片/音视频跳过），压缩无效时回退原始响应。双端落盘仍是原始字节，manifest 里的 sha256 基于压缩前内容，协议语义不变。实测 bundle 1.5 MB → 706 KB（-54%），日志会打印压缩前后体积。
+- **历史版本保留策略**：服务器只服务时间戳最大的目录；每次发布（含 rollback）成功后自动裁剪，保留最近 3 个版本用于快速回滚，更早的删除并打日志。
 - **选择策略按 commitTime 过滤**：默认 selection policy 会拒绝比内置包更"旧"的更新——发布要在构建之后。
 - **iOS 明文 HTTP**：`ios.infoPlist.NSAppTransportSecurity.NSAllowsArbitraryLoads = true`（仅实验室用，生产请上 HTTPS）。
 - **CocoaPods 在 C locale 下崩溃**：`pod install` 必须带 `LANG=en_US.UTF-8`。
