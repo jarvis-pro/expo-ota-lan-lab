@@ -6,6 +6,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { createRequire } from "node:module";
+import { fileURLToPath } from "node:url";
 
 const SERVER_DIR = import.meta.dirname;
 const APP_DIR = path.resolve(SERVER_DIR, "../ota-demo"); // apps/ota-demo
@@ -79,6 +80,36 @@ function publishUpdate(target: string, relPath: string) {
   console.log(`发布完成: ${relPath}`);
 }
 
+/** 每个 runtimeVersion 保留的最新版本数 (含本次发布); 更早的删除 */
+const KEEP_LATEST = 3;
+
+/**
+ * 发布后裁剪历史版本: 服务器永远只服务时间戳最大的目录,
+ * 保留最近 N 个用于快速回滚 (及未来差分补丁的基线), 更早的删除。
+ */
+export function pruneOldUpdates(
+  runtimeVersion: string,
+  baseDir = path.join(SERVER_DIR, "updates"),
+) {
+  const dir = path.join(baseDir, runtimeVersion);
+  const dirs = fs
+    .readdirSync(dir, { withFileTypes: true })
+    .filter((e) => e.isDirectory() && /^\d+$/.test(e.name))
+    .map((e) => e.name)
+    .sort((a, b) => Number(b) - Number(a)); // 新 -> 旧
+
+  const stale = dirs.slice(KEEP_LATEST);
+  for (const name of stale) {
+    fs.rmSync(path.join(dir, name), { recursive: true, force: true });
+    console.log(`清理历史版本: updates/${runtimeVersion}/${name}`);
+  }
+  console.log(
+    stale.length
+      ? `共清理 ${stale.length} 个历史版本, 保留最近 ${Math.min(KEEP_LATEST, dirs.length)} 个`
+      : `历史版本共 ${dirs.length} 个, 无需清理`,
+  );
+}
+
 function main() {
   const runtimeVersion = readRuntimeVersion();
   const ts = String(Date.now());
@@ -91,6 +122,11 @@ function main() {
   } else {
     publishUpdate(target, relPath);
   }
+
+  pruneOldUpdates(runtimeVersion);
 }
 
-main();
+// 被 import (如测试) 时不执行发布流程
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  main();
+}
