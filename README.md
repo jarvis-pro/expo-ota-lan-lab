@@ -67,7 +67,7 @@ node apps/server/publish.ts rollback
 - **CocoaPods 在 C locale 下崩溃**：`pod install` 必须带 `LANG=en_US.UTF-8`。
 - **repo.reactnative.dev 极慢**：`scripts/patch-maven-mirror.ts` 已把 Maven 地址替换为 Maven Central，挂在 postinstall 上自动执行。
 - **pnpm 布局**：依赖提升到根 node_modules，`scripts/link-hoisted-modules.ts` 用符号链接对齐原生工程的相对引用。
-- **真机**：iOS 真机需签名；Android 已预置 `usesCleartextTraffic: true`，`pnpm --dir apps/ota-demo exec expo run:android --variant release` 即可走同一服务器。
+- **真机**：iOS 真机需签名；Android 明文 HTTP 通过 `expo-build-properties` 插件配置（SDK 58 起 `app.json` 的 `android.usesCleartextTraffic` 已失效，见 docs/06 第 8 条），构建装机见 docs/05「Android 构建与真机运行」。
 
 更多细节见 [docs/06-排坑指南](docs/06-troubleshooting.md)。
 

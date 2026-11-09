@@ -6,6 +6,9 @@
 - Xcode（本机实测 27.2）+ iOS 模拟器
 - CocoaPods
 - pnpm 9+（monorepo 包管理）
+- Android 构建额外需要：JDK 17（`brew install --cask zulu@17`）、Android Studio（含 SDK Platform 36 + Build-Tools 36）
+
+> **注意**：JDK 必须是 17。系统若只有 Android Studio 自带的 JDK（版本过高）会构建失败；也不要指望系统 `java`——macOS 默认没装。
 
 ## 首次搭建
 
@@ -55,18 +58,41 @@ node apps/server/publish.ts      # 终端 2: 发布
 # 改 apps/ota-demo/app.json 的 updates.url，然后必须重新构建
 ```
 
-## Android 扩展路径（本实验室未实测）
+## Android 构建与真机运行（已实测：Galaxy S24 / Android 16）
 
-工程已预置 `android.package` 和 `usesCleartextTraffic`。装 Android SDK 后：
+### 环境变量（必需）
+
+`pnpm -C apps/ota-demo android`（即 `expo run:android`）依赖 `JAVA_HOME` 和 `ANDROID_HOME`，终端里没配会直接报错。写进 `~/.zshrc` 一劳永逸：
 
 ```bash
-pnpm --dir apps/ota-demo exec expo prebuild --platform android
-pnpm --dir apps/ota-demo exec expo run:android --variant release
+export JAVA_HOME=/Library/Java/JavaVirtualMachines/zulu-17.jdk/Contents/Home
+export ANDROID_HOME=$HOME/Library/Android/sdk
+export PATH=$PATH:$ANDROID_HOME/platform-tools
 ```
 
-publish.ts 的 `expo export` 会同时产出 android 产物，服务器按 `expo-platform` 请求头自动区分下发。
+### USB 真机调试授权
+
+数据线连接后 `adb devices` 必须显示 `device`（序列号旁）才算就绪：
+
+- 列表为空 → 手机端「开发者选项 → USB 调试」没开（开启路径：设置 → 关于手机 → 软件信息 → 连点「编译编号」7 次，再回开发者选项开 USB 调试）
+- 显示 `unauthorized` → 拔线重插，在手机上勾选「一律允许」并确认 RSA 授权弹窗；没弹窗就在开发者选项里点「撤销 USB 调试授权」再重插
+
+### 构建命令
+
+```bash
+# 开发构建（自动生成 android/ 目录并装到设备，随后起 Metro）
+pnpm -C apps/ota-demo android
+
+# Release 构建（模板默认用 debug keystore 签名，可直接装机；首次约 4~5 分钟）
+cd apps/ota-demo/android && ./gradlew assembleRelease && cd -
+adb install -r apps/ota-demo/android/app/build/outputs/apk/release/app-release.apk
+```
+
+Updates 的完整 API 只在 Release 构建可用，验证 OTA 必须用 Release 包。
+
+> **明文 HTTP**：OTA 服务器是 `http://` 局域网地址，Android 9+ 默认拦截明文流量。本工程通过 `expo-build-properties` 插件放行（SDK 58 起 `app.json` 的 `android.usesCleartextTraffic` 已失效），详见 [06](06-troubleshooting.md) 第 8 条。
 
 ## 真机
 
-- **Android**：同 Wi-Fi，adb 安装 release APK 即可，最简单。
+- **Android**：同 Wi-Fi，构建 release APK 后 `adb install -r` 即可（详见上文「Android 构建与真机运行」，已实测）。
 - **iOS 真机**：需要 Apple 签名（免费账号 7 天有效），`updates.url` 用局域网 IP 无需改动。

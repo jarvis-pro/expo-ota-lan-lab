@@ -32,9 +32,10 @@
 | `updates.fallbackToCacheTimeout` | 启动等待毫秒数 | 0 = 立即用本地缓存启动、后台下载，下次启动生效；调大可让"启动即换新包"，代价是启动变慢 |
 | `updates.codeSigningCertificate` | 代码签名 | 本实验室未配置；生产建议开启（见 [01](01-protocol.md)） |
 
-### iOS 明文 HTTP（仅实验室）
+### 明文 HTTP（仅实验室，生产改用 HTTPS）
 
-iOS ATS 默认禁止明文 HTTP。`ios.infoPlist.NSAppTransportSecurity.NSAllowsArbitraryLoads: true` 经 prebuild 写入 Info.plist。Android 对应 `android.usesCleartextTraffic: true`（本工程已配好）。生产环境应改用 HTTPS。
+- **iOS**：ATS 默认禁止明文 HTTP。`ios.infoPlist.NSAppTransportSecurity.NSAllowsArbitraryLoads: true` 经 prebuild 写入 Info.plist（本工程已配好）。
+- **Android**：Android 9+ 默认禁止明文 HTTP。SDK 58 起 `app.json` 的 `android.usesCleartextTraffic` 已被移除、写了不生效，需用 `expo-build-properties` 插件：`["expo-build-properties", { "android": { "usesCleartextTraffic": true } }]`（本工程已配好，详见 [06](06-troubleshooting.md) 第 8 条）。
 
 ## Updates API 速查
 

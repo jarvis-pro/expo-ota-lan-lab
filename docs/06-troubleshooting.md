@@ -57,3 +57,23 @@ node scripts/patch-maven-mirror.ts
 ## 7. pnpm monorepo 下 React Native 找不到模块
 
 **解法**：根目录 `.npmrc` 配置 `node-linker=hoisted`，让 node_modules 退化为 npm 风格的扁平结构，Metro / CocoaPods / autolinking 都不需要特殊配置。这是目前 RN 生态对 pnpm 最省心的用法。
+
+## 8. Android 明文 HTTP 被拦截，OTA 下载失败
+
+**现象**：Android Release 包检查更新时提示 IP 地址下载失败，服务器收不到请求（或请求被系统拒绝）。
+
+**原因**：Android 9+ 默认禁止明文 HTTP。旧版 Expo 支持在 `app.json` 里写 `android.usesCleartextTraffic: true`，但 **SDK 58 已移除该字段**——写在 app.json 里会被静默忽略，生成的 AndroidManifest.xml 里没有 `android:usesCleartextTraffic`（可 grep 验证）。
+
+**解法**（2026-11-09 实测）：改用 `expo-build-properties` 插件配置：
+
+```bash
+pnpm -C apps/ota-demo exec expo install expo-build-properties
+```
+
+```json
+"plugins": [
+  ["expo-build-properties", { "android": { "usesCleartextTraffic": true } }]
+]
+```
+
+改完重新 `expo prebuild --platform android` + 重新构建 Release。iOS 侧对应的是第 4 条的 ATS 配置。
