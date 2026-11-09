@@ -5,7 +5,7 @@
  * 目录约定:
  *   updates/<runtimeVersion>/<timestamp>/   每次发布的 expo export 产物
  *     ├── metadata.json                     expo export 生成
- *     ├── expo-config.json                  publish.sh 生成
+ *     ├── expo-config.json                  publish.ts 生成
  *     ├── _expo/static/...                  bundle 与资源
  *     └── rollback                          (可选) 存在该文件即表示回滚到内置包
  *

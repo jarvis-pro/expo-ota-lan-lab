@@ -10,13 +10,12 @@ expo-ota-lan-lab/
 │   └── ios/             #   prebuild 生成的原生工程 (gitignore, CNG)
 ├── server/              # 【更新服务器】TypeScript, Node 24 直跑 (workspace 包: expo-ota-lan-server)
 │   ├── server.ts        #   协议 v1 实现: /api/manifest + /api/assets + /health
-│   ├── publish.sh       #   一键发布脚本 (expo export → 归档 → expoConfig)
-│   ├── export-config.ts  #   导出 App 的 public config (manifest 的 extra.expoClient)
+│   ├── publish.ts       #   一键发布脚本 (expo export → 归档 → expo-config.json)
 │   ├── mime.ts          #   资源 Content-Type 映射
 │   └── updates/         #   更新包仓库 (gitignore)
 │       └── <runtimeVersion>/<发布时间戳>/
 │           ├── metadata.json     # expo export 产物: bundle/资源清单
-│           ├── expo-config.json   # publish.sh 生成
+│           ├── expo-config.json   # publish.ts 生成
 │           ├── _expo/static/...  # bundle 与资源文件
 │           └── rollback          # (可选) 存在即表示"回滚到内置包"
 ├── scripts/             # 辅助脚本 (如 Maven 镜像补丁)
@@ -29,10 +28,10 @@ expo-ota-lan-lab/
 
 ```
 ① 改代码                ota-demo/App.tsx (改文案/颜色)
-② 发布                  server/publish.sh
+② 发布                  server/publish.ts
                           ├─ pnpm --dir ota-demo exec expo export   → ota-demo/dist/
                           ├─ cp → server/updates/1.0.0/<时间戳>/
-                          └─ node server/export-config.ts → expo-config.json
+                          └─ @expo/config getConfig() → expo-config.json
 ③ App 启动/手动检查      expo-updates GET http://192.168.0.105:4747/api/manifest
 ④ 服务器响应             取 updates/1.0.0/ 下时间戳最新的目录, 组装 multipart manifest
 ⑤ 客户端下载             按 manifest 中的 url 逐个 GET /api/assets

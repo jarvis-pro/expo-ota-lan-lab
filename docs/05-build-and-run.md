@@ -41,7 +41,7 @@ xcrun simctl launch <UDID> com.demo.otalab
 ```bash
 node server/server.ts        # 终端 1: 起更新服务器
 # 改 ota-demo 的 JS 代码，然后:
-./server/publish.sh          # 终端 2: 发布
+node server/publish.ts      # 终端 2: 发布
 # 模拟器里杀掉 App 重开（或点"手动检查更新"按钮）即可看到新包
 ```
 
@@ -64,7 +64,7 @@ pnpm --dir ota-demo exec expo prebuild --platform android
 pnpm --dir ota-demo exec expo run:android --variant release
 ```
 
-publish.sh 的 `expo export` 会同时产出 android 产物，服务器按 `expo-platform` 请求头自动区分下发。
+publish.ts 的 `expo export` 会同时产出 android 产物，服务器按 `expo-platform` 请求头自动区分下发。
 
 ## 真机
 

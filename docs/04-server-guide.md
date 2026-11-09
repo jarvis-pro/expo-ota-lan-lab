@@ -38,45 +38,40 @@ multipart 响应      sendMultipart / sendNoUpdateAvailable / sendRollback / sen
 - **响应必须是 multipart/mixed**：协议 v1 的客户端按 form-data 分段解析（manifest 段 + extensions 段），不能只回一个 JSON。server.ts 里手工拼 boundary，不依赖任何库。
 - **`cache-control: private, max-age=0`**：防止中间缓存把旧 manifest 发给客户端。
 - **目录穿越防护**：`/api/assets` 的 `asset` 参数是客户端回传的路径，必须 `path.resolve` 后校验仍在 `updates/` 内。
-- **commitTime 来自文件 birthtime**：`cp` 拷贝会刷新 birthtime，所以每次 `publish.sh` 发布天然就是"更新"的；如果改用 `mv` 或保留时间戳的参数，注意这个语义会变。
+- **commitTime 来自文件 birthtime**：`cp` 拷贝会刷新 birthtime，所以每次 `publish.ts` 发布天然就是"更新"的；如果改用 `mv` 或保留时间戳的参数，注意这个语义会变。
 
-## publish.sh 发布流程
+## publish.ts 发布流程
 
 ```bash
-./server/publish.sh            # 正常发布
-./server/publish.sh rollback   # 发布"回滚到内置包"指令
+node server/publish.ts            # 正常发布
+node server/publish.ts rollback   # 发布"回滚到内置包"指令
 ```
 
 正常发布做了三件事：
 
 1. `pnpm --dir ota-demo exec expo export` → 产出 `ota-demo/dist/`（metadata.json + bundle + 资源）；
 2. 拷贝到 `server/updates/<runtimeVersion>/<时间戳>/`（时间戳取自 `Date.now()`，目录名数字排序即发布时间排序）；
-3. `node server/export-config.ts ota-demo > expo-config.json` —— 用 `@expo/config` 展开 App 配置，客户端把它放在 `manifest.extra.expoClient` 里使用。
+3. 用 `@expo/config` 的 `getConfig()` 展开 App 配置，写入 `expo-config.json` —— 客户端把它放在 `manifest.extra.expoClient` 里使用。
 
-## export-config.ts
+## expo-config.json 的生成（publish.ts 内联）
 
-等价于 `npx expo config --type public`，但以编程方式调用 `@expo/config` 的 `getConfig()`（从 App 目录解析依赖，monorepo 下也能找到根目录的 node_modules），避免解析 CLI stdout 里混入的日志行。
-
-逐行要点（全文仅 13 行）：
+等价于 `npx expo config --type public`，但以编程方式调用 `@expo/config` 的 `getConfig()`，避免解析 CLI stdout 里混入的日志行。关键代码：
 
 ```ts
 const require = createRequire(import.meta.url);          // ESM 文件里造出 CJS 的 require（@expo/config 是 CJS 包）
-const projectDir = path.resolve(process.argv[2]);        // 目标 Expo 项目目录（publish.sh 传入 ota-demo）
 const { getConfig } = require(
-  require.resolve('@expo/config', { paths: [projectDir] })  // 从目标项目视角解析依赖 → 保证用 App 自己 SDK 版本的 @expo/config
+  require.resolve('@expo/config', { paths: [APP_DIR] })  // 从目标项目视角解析依赖 → 保证用 App 自己 SDK 版本的 @expo/config
 );
-const { exp } = getConfig(projectDir, {
+const { exp } = getConfig(APP_DIR, {
   skipSDKVersionRequirement: true,   // SDK 49+ 的 app.json 已无 sdkVersion 字段，跳过旧校验
   isPublicConfig: true,              // 只保留可安全下发的公共字段（协议 extra.expoClient 要求的形态）
 });
-process.stdout.write(JSON.stringify(exp));               // 写 stdout，由 publish.sh 重定向落盘为 expo-config.json
 ```
 
 设计取舍：
 
 - **为什么从目标项目解析 `@expo/config`**：server 包保持零依赖；且导配置必须用 App 自己那个 SDK 版本的工具链，展开规则才一致；
-- **为什么是独立脚本而不是 server.ts 的 import**：避免给零依赖的 server 引入又重又深的 `@expo/config` 依赖树；server.ts 只读产物 `expo-config.json`，永不触碰 Expo 工具链；
-- **为什么用 `stdout.write` 而非 `console.log`**：产物是机器消费的 JSON，不要多出来的换行。
+- **为什么不放进 server.ts**：避免给零依赖的 server 引入又重又深的 `@expo/config` 依赖树；server.ts 只读产物 `expo-config.json`，永不触碰 Expo 工具链。
 
 ## mime.ts
 

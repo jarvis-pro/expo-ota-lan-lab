@@ -179,7 +179,7 @@ pass "应用已全新安装"
 # ---------- 1. 基线: v1 内置包 ----------
 
 echo "==> [1/4] 基线: 发布回滚指令, App 应运行在 v1 内置包"
-"$SERVER_DIR/publish.sh" rollback >/dev/null
+node "$SERVER_DIR/publish.ts" rollback >/dev/null
 mark_log
 restart_app
 if wait_log "ROLLBACK|noUpdateAvailable" 20; then
@@ -197,7 +197,7 @@ echo "==> [2/4] 发布 v2（换 JS 标记 + 换资源图）, App 应经 OTA 下�
 V2_LABEL="v2（OTA 热更 $(date +%H:%M:%S)）"   # 文案带时间, 保证每次 demo 产生不同的 bundle 哈希
 set_marker "$V2_LABEL" '#e63946'
 set_art_variant v2   # 换成橙色 ASSET V2, 资源哈希变化 -> 客户端会重新下载这张资源
-PUB_OUT=$("$SERVER_DIR/publish.sh")
+PUB_OUT=$(node "$SERVER_DIR/publish.ts")
 UPDATE_REL=$(echo "$PUB_OUT" | grep 发布完成 | awk '{print $2}')
 NEW_BUNDLE=$(node -p "require('$SERVER_DIR/$UPDATE_REL/metadata.json').fileMetadata.ios.bundle.split('/').pop()")
 NEW_ASSET=$(node -e "
@@ -225,7 +225,7 @@ check_art "$OUT_DIR/02-v2-ota.png" orange && pass "截图含 v2 橙色资源块�
 # ---------- 3. 回滚到内置包 ----------
 
 echo "==> [3/4] 发布回滚指令, App 应回到 v1 内置包"
-"$SERVER_DIR/publish.sh" rollback >/dev/null
+node "$SERVER_DIR/publish.ts" rollback >/dev/null
 mark_log
 restart_app
 if wait_log "ROLLBACK" 20; then

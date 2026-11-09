@@ -20,8 +20,7 @@ ota-demo/             【workspace 包】Expo 应用（blank-typescript + expo-u
   assets/ota-art.png  演示用资源：v1 绿色 / v2 橙色，热更时应随更新包变色
 server/               【workspace 包】TypeScript 更新服务器（协议 v1, Node 24 直跑 .ts, 零运行时依赖）
   server.ts           GET /api/manifest（multipart/mixed）、GET /api/assets、GET /health
-  publish.sh          一键发布：expo export → updates/<runtimeVersion>/<时间戳>/（最新时间戳生效）
-  export-config.ts    生成 expo-config.json（manifest 的 extra.expoClient）
+  publish.ts          一键发布：expo export → updates/<runtimeVersion>/<时间戳>/ → 生成 expo-config.json（最新时间戳生效）
   updates/            已发布的更新包
 artifacts/            验证截图与日志
 ```
@@ -35,7 +34,7 @@ pnpm demo        # 一键端到端验证: 构建 -> v1 基线 -> 发布 v2 -> �
                  # 复用上次构建: ./demo.sh --skip-build（约 40 秒）
 
 pnpm server      # 单独启动更新服务器
-pnpm publish     # 改完 ota-demo 的 JS 后发布一个热更（回滚: ./server/publish.sh rollback）
+pnpm publish     # 改完 ota-demo 的 JS 后发布一个热更（回滚: node server/publish.ts rollback）
 pnpm typecheck   # 两个 workspace 包全量类型检查
 ```
 
@@ -52,12 +51,12 @@ cd ota-demo/ios && LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8 pod install && cd ../..
 
 # 3. 发布一个热更：改 App.tsx 里的 BUNDLE_LABEL / BUNDLE_COLOR，
 #    需要演示资源热更再执行 python3 scripts/make-ota-art.py --variant v2，然后
-./server/publish.sh
+node server/publish.ts
 
 # 4. 冷启动 App（ON_LOAD 自动检查、下载，isUpdatePending 时自动 reload 生效）
 
 # 回滚到内置包：
-./server/publish.sh rollback
+node server/publish.ts rollback
 ```
 
 ## 关键机制与坑（本次实测）
@@ -79,7 +78,7 @@ cd ota-demo/ios && LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8 pod install && cd ../..
 | v1 内置包启动，检查到服务器上的 v1 | 因 commitTime 早于内置包被选择策略拒绝（符合预期） |
 | 发布 v2 → 冷启动 | manifest → 下载 1.57MB bundle + 橙色资源图 → 自动 reload，界面变 v2，`运行来源: OTA 下载的更新`，资源路径指向更新目录 |
 | 再次冷启动 | 服务器返回 `noUpdateAvailable`，不重复下载 |
-| `./publish.sh rollback` → 冷启动 | 收到 `rollBackToEmbedded` 指令，回到 v1 内置包，资源图同步恢复绿色 |
+| `node server/publish.ts rollback` → 冷启动 | 收到 `rollBackToEmbedded` 指令，回到 v1 内置包，资源图同步恢复绿色 |
 
 资源热更的机制与注意事项见 [docs/08-资源文件热更](docs/08-asset-hot-update.md)。
 

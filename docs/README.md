@@ -7,7 +7,7 @@
 | [01-expo-updates 协议解析](01-protocol.md) | 协议 v1 的完整交互：请求头、multipart manifest、指令、资源下载 |
 | [02-实验室架构](02-architecture.md) | 组件构成、目录约定、一次热更的完整数据流 |
 | [03-客户端配置与 API](03-client-config.md) | app.json 配置项、Updates API 速查、选择策略 |
-| [04-更新服务器实现](04-server-guide.md) | server.ts 代码解读、publish.sh 发布流程 |
+| [04-更新服务器实现](04-server-guide.md) | server.ts 代码解读、publish.ts 发布流程 |
 | [05-构建与运行](05-build-and-run.md) | iOS Release 构建、模拟器运行、Android 扩展路径 |
 | [06-排坑指南](06-troubleshooting.md) | 本次实测踩过的坑与解决办法 |
 | [07-端到端验证](07-verification.md) | demo.sh 的设计、断言方式、实测结果 |
@@ -20,7 +20,7 @@
 ┌──────────────────────────────┐             ┌─────────────────────┐
 │ server/server.ts  ( :4747 )  │ ◄── GET /api/manifest ── expo-updates 客户端
 │   updates/1.0.0/<ts>/        │ ── multipart manifest ─► (随 App 启动检查)
-│   publish.sh (expo export)   │ ◄── GET /api/assets ──── 按 manifest 逐个下载
+│   publish.ts (expo export)   │ ◄── GET /api/assets ──── 按 manifest 逐个下载
 └──────────────────────────────┘ ── bundle/assets ──────► 下载完重启生效
 ```
 
