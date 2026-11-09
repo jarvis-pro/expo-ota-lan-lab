@@ -164,6 +164,19 @@ function maybeCompress(
   return { body: gz, encoding: 'gzip' };
 }
 
+/** 人类可读的字节数: 1575734 -> "1.5 MB" */
+function formatBytes(n: number): string {
+  if (n < 1024) return `${n} B`;
+  const units = ['KB', 'MB', 'GB'];
+  let v = n / 1024;
+  let i = 0;
+  while (v >= 1024 && i < units.length - 1) {
+    v /= 1024;
+    i++;
+  }
+  return `${v >= 100 ? Math.round(v) : v.toFixed(1)} ${units[i]}`;
+}
+
 // ---------- multipart 响应 ----------
 
 /** 按协议返回 multipart/mixed 响应体（manifest 或 directive 二选一） */
@@ -346,7 +359,7 @@ async function handleAssets(req: http.IncomingMessage, res: http.ServerResponse,
   const contentType = isLaunchAsset ? 'application/javascript' : assetMeta ? getType(assetMeta.ext) : 'application/octet-stream';
   const { body, encoding } = maybeCompress(data, contentType, req.headers['accept-encoding']);
   console.log(
-    `[assets]  -> ${path.basename(assetPath)} (${data.length} bytes${encoding ? ` -> gzip ${body.length} bytes, -${Math.round((1 - body.length / data.length) * 100)}%` : ''}, ${contentType})`,
+    `[assets]  -> ${path.basename(assetPath)} (${formatBytes(data.length)}${encoding ? ` -> gzip ${formatBytes(body.length)}, -${Math.round((1 - body.length / data.length) * 100)}%` : ''}, ${contentType})`,
   );
   res.writeHead(200, {
     'content-type': contentType,
