@@ -17,12 +17,12 @@
 ```
 开发者 Mac                                    iOS 模拟器 / 真机
 ┌──────────────────────────────┐             ┌─────────────────────┐
-│ server/server.ts  ( :4747 )  │ ◄── GET /api/manifest ── expo-updates 客户端
+│ apps/server/server.ts  ( :4747 )  │ ◄── GET /api/manifest ── expo-updates 客户端
 │   updates/1.0.0/<ts>/        │ ── multipart manifest ─► (随 App 启动检查)
 │   publish.ts (expo export)   │ ◄── GET /api/assets ──── 按 manifest 逐个下载
 └──────────────────────────────┘ ── bundle/assets ──────► 下载完重启生效
 ```
 
-- 客户端：`ota-demo/`（Expo SDK 58 + expo-updates，`app.json` 指向局域网服务器）
-- 服务器：`server/`（TypeScript，Node 24 直跑，零运行时依赖）
-- 发布：`node server/publish.ts`（基线 / 热更 / 回滚均由它产出）
+- 客户端：`apps/ota-demo/`（Expo SDK 58 + expo-updates，`app.json` 指向局域网服务器）
+- 服务器：`apps/server/`（TypeScript，Node 24 直跑，零运行时依赖）
+- 发布：`node apps/server/publish.ts`（基线 / 热更 / 回滚均由它产出）

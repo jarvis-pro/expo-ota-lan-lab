@@ -4,20 +4,22 @@
 
 ```
 expo-ota-lan-lab/
-├── ota-demo/            # 【客户端】Expo SDK 58 应用 (workspace 包: ota-demo)
-│   ├── app.json         #   updates.url / runtimeVersion / ATS 等关键配置
-│   ├── App.tsx          #   演示界面: 版本标记 + useUpdates 状态面板 + 手动操作按钮
-│   └── ios/             #   prebuild 生成的原生工程 (gitignore, CNG)
-├── server/              # 【更新服务器】TypeScript, Node 24 直跑 (workspace 包: expo-ota-lan-server)
-│   ├── server.ts        #   协议 v1 实现: /api/manifest + /api/assets + /health
-│   ├── publish.ts       #   一键发布脚本 (expo export → 归档 → expo-config.json)
-│   ├── mime.ts          #   资源 Content-Type 映射
-│   └── updates/         #   更新包仓库 (gitignore)
-│       └── <runtimeVersion>/<发布时间戳>/
-│           ├── metadata.json     # expo export 产物: bundle/资源清单
-│           ├── expo-config.json   # publish.ts 生成
-│           ├── _expo/static/...  # bundle 与资源文件
-│           └── rollback          # (可选) 存在即表示"回滚到内置包"
+├── apps/
+│   ├── ota-demo/        # 【客户端】Expo SDK 58 应用 (workspace 包: ota-demo)
+│   │   ├── app.json         #   updates.url / runtimeVersion / ATS 等关键配置
+│   │   ├── App.tsx          #   演示界面: 版本标记 + useUpdates 状态面板 + 手动操作按钮
+│   │   └── ios/             #   prebuild 生成的原生工程 (gitignore, CNG)
+│   └── server/          # 【更新服务器】TypeScript, Node 24 直跑 (workspace 包: expo-ota-lan-server)
+│       ├── server.ts        #   协议 v1 实现: /api/manifest + /api/assets + /health
+│       ├── publish.ts       #   一键发布脚本 (expo export → 归档 → expo-config.json)
+│       ├── mime.ts          #   资源 Content-Type 映射
+│       └── updates/         #   更新包仓库 (gitignore)
+│           └── <runtimeVersion>/<发布时间戳>/
+│               ├── metadata.json     # expo export 产物: bundle/资源清单
+│               ├── expo-config.json   # publish.ts 生成
+│               ├── _expo/static/...  # bundle 与资源文件
+│               └── rollback          # (可选) 存在即表示"回滚到内置包"
+├── packages/            # 预留: 共享库 (目前为空)
 ├── scripts/             # 辅助脚本 (如 Maven 镜像补丁)
 ├── docs/                # 本文档目录
 ├── artifacts/           # 验证产物: 截图 + 服务器日志 (gitignore)
@@ -26,10 +28,10 @@ expo-ota-lan-lab/
 ## 一次热更的完整数据流
 
 ```
-① 改代码                ota-demo/App.tsx (改文案/颜色)
-② 发布                  server/publish.ts
-                          ├─ pnpm --dir ota-demo exec expo export   → ota-demo/dist/
-                          ├─ cp → server/updates/1.0.0/<时间戳>/
+① 改代码                apps/ota-demo/App.tsx (改文案/颜色)
+② 发布                  apps/server/publish.ts
+                          ├─ pnpm --dir apps/ota-demo exec expo export   → apps/ota-demo/dist/
+                          ├─ cp → apps/server/updates/1.0.0/<时间戳>/
                           └─ @expo/config getConfig() → expo-config.json
 ③ App 启动/手动检查      expo-updates GET http://192.168.0.105:4747/api/manifest
 ④ 服务器响应             取 updates/1.0.0/ 下时间戳最新的目录, 组装 multipart manifest

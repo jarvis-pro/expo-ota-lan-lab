@@ -13,10 +13,10 @@
 pnpm install                                # 安装两个 workspace 包的依赖（含 Maven 镜像补丁 postinstall）
 
 # 生成 iOS 原生工程（CNG，ios/ 不入库）
-pnpm --dir ota-demo exec expo prebuild --platform ios
+pnpm --dir apps/ota-demo exec expo prebuild --platform ios
 
 # 安装 Pods（必须带 UTF-8 locale，原因见 06-排坑指南）
-cd ota-demo/ios && LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8 pod install && cd ../..
+cd apps/ota-demo/ios && LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8 pod install && cd ../..
 ```
 
 ## 构建 Release 并装入模拟器
@@ -24,13 +24,13 @@ cd ota-demo/ios && LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8 pod install && cd ../..
 Updates 的完整 API 只在 Release 构建可用（开发构建永远跑 dev server 的最新代码）。
 
 ```bash
-xcodebuild -workspace ota-demo/ios/otademo.xcworkspace -scheme otademo \
+xcodebuild -workspace apps/ota-demo/ios/otademo.xcworkspace -scheme otademo \
   -configuration Release -destination "id=<模拟器UDID>" \
-  -derivedDataPath ota-demo/ios/.ios-build/derived-data/Release build
+  -derivedDataPath apps/ota-demo/ios/.ios-build/derived-data/Release build
 
 xcrun simctl boot <UDID>                     # 已启动则报错可忽略
 xcrun simctl install <UDID> \
-  ota-demo/ios/.ios-build/derived-data/Release/Build/Products/Release-iphonesimulator/otademo.app
+  apps/ota-demo/ios/.ios-build/derived-data/Release/Build/Products/Release-iphonesimulator/otademo.app
 xcrun simctl launch <UDID> com.demo.otalab
 ```
 
@@ -39,9 +39,9 @@ xcrun simctl launch <UDID> com.demo.otalab
 ## 日常热更循环
 
 ```bash
-node server/server.ts        # 终端 1: 起更新服务器
+node apps/server/server.ts        # 终端 1: 起更新服务器
 # 改 ota-demo 的 JS 代码，然后:
-node server/publish.ts      # 终端 2: 发布
+node apps/server/publish.ts      # 终端 2: 发布
 # 模拟器里杀掉 App 重开（或点"手动检查更新"按钮）即可看到新包
 ```
 
@@ -52,7 +52,7 @@ node server/publish.ts      # 终端 2: 发布
 `updates.url` 在构建期烧进原生包。本机 IP 变了（如换 Wi-Fi）：
 
 ```bash
-# 改 ota-demo/app.json 的 updates.url，然后必须重新构建
+# 改 apps/ota-demo/app.json 的 updates.url，然后必须重新构建
 ```
 
 ## Android 扩展路径（本实验室未实测）
@@ -60,8 +60,8 @@ node server/publish.ts      # 终端 2: 发布
 工程已预置 `android.package` 和 `usesCleartextTraffic`。装 Android SDK 后：
 
 ```bash
-pnpm --dir ota-demo exec expo prebuild --platform android
-pnpm --dir ota-demo exec expo run:android --variant release
+pnpm --dir apps/ota-demo exec expo prebuild --platform android
+pnpm --dir apps/ota-demo exec expo run:android --variant release
 ```
 
 publish.ts 的 `expo export` 会同时产出 android 产物，服务器按 `expo-platform` 请求头自动区分下发。

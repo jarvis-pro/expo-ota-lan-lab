@@ -60,7 +60,7 @@ App 启动（或手动调用 checkForUpdateAsync）
 2. **部件**：`--boundary` 开头 → 若干部件头（`content-disposition` 的 `name` 是客户端拆包的依据）→ 空行 → 部件体；
 3. **结尾**：`--boundary--`（多一对横杠）表示消息结束。
 
-实测抓包（启动 `node server/server.ts` 后执行，行尾的 `^M` 是 `\r`，即部件之间用 CRLF 分隔）：
+实测抓包（启动 `node apps/server/server.ts` 后执行，行尾的 `^M` 是 `\r`，即部件之间用 CRLF 分隔）：
 
 ```bash
 curl -s -D - -H 'expo-platform: ios' -H 'expo-runtime-version: 1.0.0' \
@@ -151,7 +151,7 @@ GET /api/assets?asset=<相对 updates/ 的路径>&runtimeVersion=1.0.0&platform=
 ## 第 3 步：生效时机
 
 - 默认 `checkAutomatically: ON_LOAD`：启动时检查、后台下载，**下次启动**生效。
-- JS 里可以在 `isUpdatePending`（下载完成）时调 `Updates.reloadAsync()` 立即生效——本实验室的 App 就是这么做的（见 `ota-demo/App.tsx`）。
+- JS 里可以在 `isUpdatePending`（下载完成）时调 `Updates.reloadAsync()` 立即生效——本实验室的 App 就是这么做的（见 `apps/ota-demo/App.tsx`）。
 
 ## 关键细节
 

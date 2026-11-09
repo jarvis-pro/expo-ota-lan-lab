@@ -52,7 +52,7 @@ import * as Updates from 'expo-updates';
 | `Updates.reloadAsync()` | 立即重启并切换到已下载的更新（不调用则下次冷启动生效） |
 | `Updates.readLogEntriesAsync()` | 读客户端日志，排查 `updateRejectedBySelectionPolicy` 等原因 |
 
-本实验室 App 的自动生效逻辑（`ota-demo/App.tsx`）：
+本实验室 App 的自动生效逻辑（`apps/ota-demo/App.tsx`）：
 
 ```tsx
 const { isUpdatePending } = Updates.useUpdates();

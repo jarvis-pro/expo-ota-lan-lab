@@ -7,20 +7,21 @@
 ## 结构（pnpm monorepo）
 
 ```
-package.json          根编排: pnpm server / pnpm publish / pnpm demo / pnpm typecheck
-pnpm-workspace.yaml   workspace: ota-demo + server
+package.json          根编排: pnpm server / pnpm publish / pnpm typecheck
+pnpm-workspace.yaml   workspace: apps/* + packages/*
 .npmrc                node-linker=hoisted（RN/Metro/CocoaPods 兼容关键，见 docs/06）
 docs/                 全部知识文档（按编号阅读）
 scripts/              link-hoisted-modules.ts / patch-maven-mirror.ts（postinstall 自动执行）
                       make-ota-art.py（生成资源热更演示图 ota-art.png 的 v1/v2 变体）
-ota-demo/             【workspace 包】Expo 应用（blank-typescript + expo-updates）
+apps/ota-demo/        【workspace 包】Expo 应用（blank-typescript + expo-updates）
   app.json            updates.url 指向 http://192.168.0.105:4747/api/manifest, runtimeVersion "1.0.0"
   App.tsx             BUNDLE_LABEL / BUNDLE_COLOR 是内容热更标记；require 的 ota-art.png 是资源热更标记
   assets/ota-art.png  演示用资源：v1 绿色 / v2 橙色，热更时应随更新包变色
-server/               【workspace 包】TypeScript 更新服务器（协议 v1, Node 24 直跑 .ts, 零运行时依赖）
+apps/server/          【workspace 包】TypeScript 更新服务器（协议 v1, Node 24 直跑 .ts, 零运行时依赖）
   server.ts           GET /api/manifest（multipart/mixed）、GET /api/assets、GET /health
   publish.ts          一键发布：expo export → updates/<runtimeVersion>/<时间戳>/ → 生成 expo-config.json（最新时间戳生效）
   updates/            已发布的更新包
+packages/             预留：共享库（目前为空）
 artifacts/            验证截图与日志
 ```
 
@@ -30,7 +31,7 @@ artifacts/            验证截图与日志
 pnpm install     # 安装全部依赖（postinstall 自动打 Maven 镜像补丁 + 建 node_modules 符号链接）
 
 pnpm server      # 单独启动更新服务器
-pnpm publish     # 改完 ota-demo 的 JS 后发布一个热更（回滚: node server/publish.ts rollback）
+pnpm publish     # 改完 ota-demo 的 JS 后发布一个热更（回滚: node apps/server/publish.ts rollback）
 pnpm typecheck   # 两个 workspace 包全量类型检查
 ```
 
@@ -38,21 +39,21 @@ pnpm typecheck   # 两个 workspace 包全量类型检查
 
 ```bash
 # 1. 启动更新服务器（如需改端口/IP，设 HOSTNAME 环境变量）
-node server/server.ts
+node apps/server/server.ts
 
 # 2. 构建 Release 版 App（Release 才有完整 Updates API；iOS 模拟器）
-pnpm --dir ota-demo exec expo prebuild --platform ios
-cd ota-demo/ios && LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8 pod install && cd ../..
+pnpm --dir apps/ota-demo exec expo prebuild --platform ios
+cd apps/ota-demo/ios && LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8 pod install && cd ../..
 # 用 Xcode 或 xcodebuild 以 Release 配置构建并装入模拟器
 
 # 3. 发布一个热更：改 App.tsx 里的 BUNDLE_LABEL / BUNDLE_COLOR，
 #    需要演示资源热更再执行 python3 scripts/make-ota-art.py --variant v2，然后
-node server/publish.ts
+node apps/server/publish.ts
 
 # 4. 冷启动 App（ON_LOAD 自动检查、下载，isUpdatePending 时自动 reload 生效）
 
 # 回滚到内置包：
-node server/publish.ts rollback
+node apps/server/publish.ts rollback
 ```
 
 ## 关键机制与坑（本次实测）
@@ -63,7 +64,7 @@ node server/publish.ts rollback
 - **CocoaPods 在 C locale 下崩溃**：`pod install` 必须带 `LANG=en_US.UTF-8`。
 - **repo.reactnative.dev 极慢**：`scripts/patch-maven-mirror.ts` 已把 Maven 地址替换为 Maven Central，挂在 postinstall 上自动执行。
 - **pnpm 布局**：依赖提升到根 node_modules，`scripts/link-hoisted-modules.ts` 用符号链接对齐原生工程的相对引用。
-- **真机**：iOS 真机需签名；Android 已预置 `usesCleartextTraffic: true`，`pnpm --dir ota-demo exec expo run:android --variant release` 即可走同一服务器。
+- **真机**：iOS 真机需签名；Android 已预置 `usesCleartextTraffic: true`，`pnpm --dir apps/ota-demo exec expo run:android --variant release` 即可走同一服务器。
 
 更多细节见 [docs/06-排坑指南](docs/06-troubleshooting.md)。
 
@@ -74,6 +75,6 @@ node server/publish.ts rollback
 | v1 内置包启动，检查到服务器上的 v1 | 因 commitTime 早于内置包被选择策略拒绝（符合预期） |
 | 发布 v2 → 冷启动 | manifest → 下载 1.57MB bundle + 橙色资源图 → 自动 reload，界面变 v2，`运行来源: OTA 下载的更新`，资源路径指向更新目录 |
 | 再次冷启动 | 服务器返回 `noUpdateAvailable`，不重复下载 |
-| `node server/publish.ts rollback` → 冷启动 | 收到 `rollBackToEmbedded` 指令，回到 v1 内置包，资源图同步恢复绿色 |
+| `node apps/server/publish.ts rollback` → 冷启动 | 收到 `rollBackToEmbedded` 指令，回到 v1 内置包，资源图同步恢复绿色 |
 
 资源热更的机制与注意事项见 [docs/08-资源文件热更](docs/08-asset-hot-update.md)。

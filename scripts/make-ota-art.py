@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""生成 OTA 资源热更演示用的图片素材 ota-demo/assets/ota-art.png。
+"""生成 OTA 资源热更演示用的图片素材 apps/ota-demo/assets/ota-art.png。
 
 用法:
   python3 scripts/make-ota-art.py [--variant v1|v2]
@@ -17,7 +17,7 @@ import os
 from PIL import Image, ImageDraw, ImageFont
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-OUT = os.path.join(ROOT, "ota-demo", "assets", "ota-art.png")
+OUT = os.path.join(ROOT, "apps", "ota-demo", "assets", "ota-art.png")
 
 W, H = 600, 240
 VARIANTS = {

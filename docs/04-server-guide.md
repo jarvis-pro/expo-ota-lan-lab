@@ -1,6 +1,6 @@
 # 04 · 更新服务器实现
 
-`server/` 是一个零运行时依赖的 TypeScript 实现（Node 24 原生类型擦除，`node server.ts` 直跑）。协议细节见 [01](01-protocol.md)，本文件解读代码本身。
+`apps/server/` 是一个零运行时依赖的 TypeScript 实现（Node 24 原生类型擦除，`node server.ts` 直跑）。协议细节见 [01](01-protocol.md)，本文件解读代码本身。
 
 ## server.ts 结构
 
@@ -43,14 +43,14 @@ multipart 响应      sendMultipart / sendNoUpdateAvailable / sendRollback / sen
 ## publish.ts 发布流程
 
 ```bash
-node server/publish.ts            # 正常发布
-node server/publish.ts rollback   # 发布"回滚到内置包"指令
+node apps/server/publish.ts            # 正常发布
+node apps/server/publish.ts rollback   # 发布"回滚到内置包"指令
 ```
 
 正常发布做了三件事：
 
-1. `pnpm --dir ota-demo exec expo export` → 产出 `ota-demo/dist/`（metadata.json + bundle + 资源）；
-2. 拷贝到 `server/updates/<runtimeVersion>/<时间戳>/`（时间戳取自 `Date.now()`，目录名数字排序即发布时间排序）；
+1. `pnpm --dir apps/ota-demo exec expo export` → 产出 `apps/ota-demo/dist/`（metadata.json + bundle + 资源）；
+2. 拷贝到 `apps/server/updates/<runtimeVersion>/<时间戳>/`（时间戳取自 `Date.now()`，目录名数字排序即发布时间排序）；
 3. 用 `@expo/config` 的 `getConfig()` 展开 App 配置，写入 `expo-config.json` —— 客户端把它放在 `manifest.extra.expoClient` 里使用。
 
 ## expo-config.json 的生成（publish.ts 内联）
@@ -80,7 +80,7 @@ const { exp } = getConfig(APP_DIR, {
 ## 本地调试
 
 ```bash
-node server/server.ts                     # 启动
+node apps/server/server.ts                     # 启动
 curl http://127.0.0.1:4747/health         # 健康检查
 # 模拟客户端检查更新:
 curl -H 'expo-protocol-version: 1' -H 'expo-platform: ios' -H 'expo-runtime-version: 1.0.0' \

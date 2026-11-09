@@ -4,7 +4,7 @@ JS bundle 之外，`require` 引入的图片等资源文件同样走 OTA。本�
 
 ## 机制：资源是怎么跟着更新走的
 
-以 `ota-demo/assets/ota-art.png` 为例，App 里通过 `require('./assets/ota-art.png')` 引入：
+以 `apps/ota-demo/assets/ota-art.png` 为例，App 里通过 `require('./assets/ota-art.png')` 引入：
 
 1. **导出**：`expo export` 把被 bundle 引用的资源拷到 `dist/assets/<内容哈希>.png`，并在 `metadata.json` 的 `fileMetadata.<platform>.assets` 里登记 `{path, ext}`。
 2. **manifest**：服务器（`server.ts` 的 `getAssetMetadataAsync`）把每个资源换算成协议 manifest 里的一项：`key`（md5，客户端去重缓存用）、`hash`（sha256）、`contentType`、`url`（指向 `GET /api/assets`）。

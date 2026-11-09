@@ -8,7 +8,7 @@ import { spawnSync } from "node:child_process";
 import { createRequire } from "node:module";
 
 const SERVER_DIR = import.meta.dirname;
-const APP_DIR = path.resolve(SERVER_DIR, "../ota-demo");
+const APP_DIR = path.resolve(SERVER_DIR, "../ota-demo"); // apps/ota-demo
 
 /** 运行外部命令; 任何一步失败立即抛错, 以非零码退出 */
 function run(cmd: string, args: string[], cwd: string) {
@@ -35,7 +35,7 @@ function readRuntimeVersion(): string {
   return rv;
 }
 
-/** expo export 导出更新包到 ota-demo/dist/ */
+/** expo export 导出更新包到 apps/ota-demo/dist/ */
 function exportUpdate() {
   console.log("==> 导出更新包 (expo export)");
   run("pnpm", ["exec", "expo", "export"], APP_DIR);

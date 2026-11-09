@@ -2,7 +2,7 @@ node_modules
 dist/
 ios/
 android/
-server/updates/
+apps/server/updates/
 artifacts/
 .ios-build/
 .expo/
