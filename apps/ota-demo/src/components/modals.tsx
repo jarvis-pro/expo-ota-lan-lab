@@ -1,9 +1,11 @@
-import React, { useState } from 'react';
-import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { Animated, Dimensions, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { colors, font, radius } from '../theme';
 import { LEVEL_META, MemberLevel, TXN_META, TxnType, useLedger } from '../store';
 
 // ---------- 通用表单骨架 ----------
+
+const SHEET_OFFSCREEN = Math.round(Dimensions.get('window').height);
 
 function Sheet({
   visible,
@@ -22,25 +24,64 @@ function Sheet({
   submitDisabled?: boolean;
   children: React.ReactNode;
 }) {
+  // Modal 本体保持挂载，直到淡出/滑出动画结束后再卸载
+  const [mounted, setMounted] = useState(visible);
+  const [backdropOpacity] = useState(() => new Animated.Value(0));
+  const [sheetTranslate] = useState(() => new Animated.Value(SHEET_OFFSCREEN));
+
+  // visible 变为 true 时同步挂载 Modal（React 官方的 render 期间调整 state 模式），
+  // 使进场动画能立刻开始；卸载则在退场动画回调里异步完成
+  const [prevVisible, setPrevVisible] = useState(visible);
+  if (prevVisible !== visible) {
+    setPrevVisible(visible);
+    if (visible) setMounted(true);
+  }
+
+  useEffect(() => {
+    if (visible) {
+      Animated.parallel([
+        // 遮罩层淡入，不跟随抽屉平移
+        Animated.timing(backdropOpacity, { toValue: 1, duration: 220, useNativeDriver: true }),
+        Animated.timing(sheetTranslate, { toValue: 0, duration: 280, useNativeDriver: true }),
+      ]).start();
+    } else if (mounted) {
+      Animated.parallel([
+        // 遮罩层淡出
+        Animated.timing(backdropOpacity, { toValue: 0, duration: 200, useNativeDriver: true }),
+        Animated.timing(sheetTranslate, { toValue: SHEET_OFFSCREEN, duration: 240, useNativeDriver: true }),
+      ]).start(({ finished }) => {
+        if (finished) setMounted(false);
+      });
+    }
+  }, [visible, mounted, backdropOpacity, sheetTranslate]);
+
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <KeyboardAvoidingView style={styles.overlay} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <Pressable style={styles.backdrop} onPress={onClose} />
-        <View style={styles.sheet}>
-          <View style={styles.grabber} />
-          <Text style={styles.sheetTitle}>{title}</Text>
-          <ScrollView style={{ maxHeight: 420 }} keyboardShouldPersistTaps="handled">
-            {children}
-          </ScrollView>
-          <Pressable
-            style={[styles.submit, submitDisabled && { opacity: 0.4 }]}
-            disabled={submitDisabled}
-            onPress={onSubmit}
-          >
-            <Text style={styles.submitText}>{submitLabel}</Text>
-          </Pressable>
-        </View>
-      </KeyboardAvoidingView>
+    <Modal visible={mounted} transparent animationType="none" onRequestClose={onClose}>
+      <View style={styles.overlay}>
+        <Animated.View style={[styles.backdrop, { opacity: backdropOpacity }]}>
+          <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
+        </Animated.View>
+        <KeyboardAvoidingView
+          style={styles.sheetContainer}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          pointerEvents="box-none"
+        >
+          <Animated.View style={[styles.sheet, { transform: [{ translateY: sheetTranslate }] }]}>
+            <View style={styles.grabber} />
+            <Text style={styles.sheetTitle}>{title}</Text>
+            <ScrollView style={{ maxHeight: 420 }} keyboardShouldPersistTaps="handled">
+              {children}
+            </ScrollView>
+            <Pressable
+              style={[styles.submit, submitDisabled && { opacity: 0.4 }]}
+              disabled={submitDisabled}
+              onPress={onSubmit}
+            >
+              <Text style={styles.submitText}>{submitLabel}</Text>
+            </Pressable>
+          </Animated.View>
+        </KeyboardAvoidingView>
+      </View>
     </Modal>
   );
 }
@@ -237,8 +278,9 @@ export function AddMemberModal({ visible, onClose }: { visible: boolean; onClose
 }
 
 const styles = StyleSheet.create({
-  overlay: { flex: 1, justifyContent: 'flex-end' },
+  overlay: { flex: 1 },
   backdrop: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(15,17,30,0.45)' },
+  sheetContainer: { flex: 1, justifyContent: 'flex-end' },
   sheet: {
     backgroundColor: colors.card,
     borderTopLeftRadius: 24,
