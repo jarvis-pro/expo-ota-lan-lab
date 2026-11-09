@@ -4,8 +4,8 @@ import { useEffect } from 'react';
 import { Button, Image, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 // ===== 热更标记：发布 v2 时只需改这两行 =====
-const BUNDLE_LABEL = 'v1（内置包）';
-const BUNDLE_COLOR = '#1e90ff';
+const BUNDLE_LABEL = 'v11（哈哈哈哈）';
+const BUNDLE_COLOR = '#ff8800';
 // ==========================================
 
 // 资源热更标记：被 require 引用的资源会随更新包分发。
