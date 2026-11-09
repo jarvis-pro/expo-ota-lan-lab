@@ -51,9 +51,9 @@ multipart 响应      sendMultipart / sendNoUpdateAvailable / sendRollback / sen
 
 1. `pnpm --dir ota-demo exec expo export` → 产出 `ota-demo/dist/`（metadata.json + bundle + 资源）；
 2. 拷贝到 `server/updates/<runtimeVersion>/<时间戳>/`（时间戳取自 `Date.now()`，目录名数字排序即发布时间排序）；
-3. `node server/exportConfig.ts ota-demo > expoConfig.json` —— 用 `@expo/config` 展开 App 配置，客户端把它放在 `manifest.extra.expoClient` 里使用。
+3. `node server/export-config.ts ota-demo > expoConfig.json` —— 用 `@expo/config` 展开 App 配置，客户端把它放在 `manifest.extra.expoClient` 里使用。
 
-## exportConfig.ts
+## export-config.ts
 
 等价于 `npx expo config --type public`，但以编程方式调用 `@expo/config` 的 `getConfig()`（从 App 目录解析依赖，monorepo 下也能找到根目录的 node_modules），避免解析 CLI stdout 里混入的日志行。
 

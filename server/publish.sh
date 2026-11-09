@@ -30,6 +30,6 @@ echo "==> 拷贝到 updates/$RUNTIME_VERSION/$TS"
 cp -r "$APP_DIR/dist/"* "$TARGET/"
 
 echo "==> 生成 expoConfig.json"
-node "$SERVER_DIR/exportConfig.ts" "$APP_DIR" > "$TARGET/expoConfig.json"
+node "$SERVER_DIR/export-config.ts" "$APP_DIR" > "$TARGET/expoConfig.json"
 
 echo "发布完成: updates/$RUNTIME_VERSION/$TS"

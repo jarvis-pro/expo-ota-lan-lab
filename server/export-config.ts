@@ -1,4 +1,4 @@
-// 用法: node exportConfig.ts <expo项目目录>
+// 用法: node export-config.ts <expo项目目录>
 // 输出该项目的 public expo config JSON 到 stdout (写入更新包的 expoConfig.json)
 import path from 'node:path';
 import { createRequire } from 'node:module';

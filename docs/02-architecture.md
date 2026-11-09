@@ -11,7 +11,7 @@ expo-ota-lan-lab/
 ├── server/              # 【更新服务器】TypeScript, Node 24 直跑 (workspace 包: expo-ota-lan-server)
 │   ├── server.ts        #   协议 v1 实现: /api/manifest + /api/assets + /health
 │   ├── publish.sh       #   一键发布脚本 (expo export → 归档 → expoConfig)
-│   ├── exportConfig.ts  #   导出 App 的 public config (manifest 的 extra.expoClient)
+│   ├── export-config.ts  #   导出 App 的 public config (manifest 的 extra.expoClient)
 │   ├── mime.ts          #   资源 Content-Type 映射
 │   └── updates/         #   更新包仓库 (gitignore)
 │       └── <runtimeVersion>/<发布时间戳>/
@@ -32,7 +32,7 @@ expo-ota-lan-lab/
 ② 发布                  server/publish.sh
                           ├─ pnpm --dir ota-demo exec expo export   → ota-demo/dist/
                           ├─ cp → server/updates/1.0.0/<时间戳>/
-                          └─ node server/exportConfig.ts → expoConfig.json
+                          └─ node server/export-config.ts → expoConfig.json
 ③ App 启动/手动检查      expo-updates GET http://192.168.0.105:4747/api/manifest
 ④ 服务器响应             取 updates/1.0.0/ 下时间戳最新的目录, 组装 multipart manifest
 ⑤ 客户端下载             按 manifest 中的 url 逐个 GET /api/assets

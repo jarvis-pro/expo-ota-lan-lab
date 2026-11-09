@@ -21,7 +21,7 @@ ota-demo/             【workspace 包】Expo 应用（blank-typescript + expo-u
 server/               【workspace 包】TypeScript 更新服务器（协议 v1, Node 24 直跑 .ts, 零运行时依赖）
   server.ts           GET /api/manifest（multipart/mixed）、GET /api/assets、GET /health
   publish.sh          一键发布：expo export → updates/<runtimeVersion>/<时间戳>/（最新时间戳生效）
-  exportConfig.ts     生成 expoConfig.json（manifest 的 extra.expoClient）
+  export-config.ts     生成 expoConfig.json（manifest 的 extra.expoClient）
   updates/            已发布的更新包
 artifacts/            验证截图与日志
 ```
