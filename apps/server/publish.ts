@@ -37,8 +37,10 @@ function readRuntimeVersion(): string {
 
 /** expo export 导出更新包到 apps/ota-demo/dist/ */
 function exportUpdate() {
-  console.log("==> 导出更新包 (expo export)");
-  run("pnpm", ["exec", "expo", "export"], APP_DIR);
+  console.log("==> 导出更新包 (expo export, 仅原生平台)");
+  // 显式限定 ios/android: app.json 里的 web 配置只用于开发环境快速预览,
+  // 不限制平台时 expo export 会把 web bundle 也打进更新包
+  run("pnpm", ["exec", "expo", "export", "--platform", "ios", "--platform", "android"], APP_DIR);
 }
 
 /** 把 dist/ 拷贝进目标更新目录 */
