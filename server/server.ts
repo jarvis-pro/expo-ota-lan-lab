@@ -5,7 +5,7 @@
  * 目录约定:
  *   updates/<runtimeVersion>/<timestamp>/   每次发布的 expo export 产物
  *     ├── metadata.json                     expo export 生成
- *     ├── expoConfig.json                   publish.sh 生成
+ *     ├── expo-config.json                  publish.sh 生成
  *     ├── _expo/static/...                  bundle 与资源
  *     └── rollback                          (可选) 存在该文件即表示回滚到内置包
  *
@@ -106,9 +106,9 @@ async function getMetadataAsync(updateBundlePath: string): Promise<{
   };
 }
 
-/** 读取发布时生成的 expoConfig.json，塞进 manifest 的 extra.expoClient */
+/** 读取发布时生成的 expo-config.json，塞进 manifest 的 extra.expoClient */
 async function getExpoConfigAsync(updateBundlePath: string): Promise<unknown> {
-  const buf = await fsp.readFile(path.join(updateBundlePath, 'expoConfig.json'));
+  const buf = await fsp.readFile(path.join(updateBundlePath, 'expo-config.json'));
   return JSON.parse(buf.toString('utf-8'));
 }
 

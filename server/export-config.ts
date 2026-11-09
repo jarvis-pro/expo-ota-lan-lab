@@ -1,5 +1,5 @@
 // 用法: node export-config.ts <expo项目目录>
-// 输出该项目的 public expo config JSON 到 stdout (写入更新包的 expoConfig.json)
+// 输出该项目的 public expo config JSON 到 stdout (写入更新包的 expo-config.json)
 import path from 'node:path';
 import { createRequire } from 'node:module';
 

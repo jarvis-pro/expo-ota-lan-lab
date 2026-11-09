@@ -29,7 +29,7 @@ echo "==> 导出更新包 (expo export)"
 echo "==> 拷贝到 updates/$RUNTIME_VERSION/$TS"
 cp -r "$APP_DIR/dist/"* "$TARGET/"
 
-echo "==> 生成 expoConfig.json"
-node "$SERVER_DIR/export-config.ts" "$APP_DIR" > "$TARGET/expoConfig.json"
+echo "==> 生成 expo-config.json"
+node "$SERVER_DIR/export-config.ts" "$APP_DIR" > "$TARGET/expo-config.json"
 
 echo "发布完成: updates/$RUNTIME_VERSION/$TS"
