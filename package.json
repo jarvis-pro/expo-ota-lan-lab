@@ -2,6 +2,7 @@
   "name": "expo-ota-lan-lab",
   "version": "1.0.0",
   "private": true,
+  "type": "module",
   "description": "expo-updates 局域网 OTA 热更实验室：客户端(ota-demo) + 自托管更新服务器(server)",
   "packageManager": "pnpm@9.15.9",
   "engines": {
@@ -11,6 +12,6 @@
     "server": "pnpm --filter expo-ota-lan-server start",
     "publish": "node server/publish.ts",
     "typecheck": "pnpm -r run typecheck",
-    "postinstall": "bash scripts/link-hoisted-modules.sh && bash scripts/patch-maven-mirror.sh"
+    "postinstall": "node scripts/link-hoisted-modules.ts && node scripts/patch-maven-mirror.ts"
   }
 }

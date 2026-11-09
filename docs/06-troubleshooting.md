@@ -28,13 +28,13 @@ LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8 pod install
 
 **原因**：RN 预编译产物默认从 `https://repo.reactnative.dev/maven2` 下载，该域名在本网络环境几乎不可用。
 
-**解法**：把下载源替换为 Maven Central（实测 30 MB 约 3.5 秒）。本仓库已固化为 postinstall 补丁脚本 `scripts/patch-maven-mirror.sh`（pnpm install 后自动执行），手动执行：
+**解法**：把下载源替换为 Maven Central（实测 30 MB 约 3.5 秒）。本仓库已固化为 postinstall 补丁脚本 `scripts/patch-maven-mirror.ts`（pnpm install 后自动执行），手动执行：
 
 ```bash
-bash scripts/patch-maven-mirror.sh
+node scripts/patch-maven-mirror.ts
 ```
 
-原理：`grep -rl "https://repo.reactnative.dev/maven2" node_modules` 找到 react-native 的 `.rb` 文件，sed 替换为 `https://repo1.maven.org/maven2`。注意要对 **realpath** 之后的文件做替换，避免 pnpm 的符号链接被 sed 破坏。
+原理：递归扫描 node_modules 下的 `.rb` / `.podspec` 真实文件（跳过符号链接，pnpm 的真实内容在 `.pnpm` 目录里），把 `https://repo.reactnative.dev/maven2` 替换为 `https://repo1.maven.org/maven2`。
 
 ## 4. iOS 明文 HTTP 被 ATS 拦截
 

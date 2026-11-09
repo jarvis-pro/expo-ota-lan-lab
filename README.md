@@ -11,7 +11,7 @@ package.json          根编排: pnpm server / pnpm publish / pnpm demo / pnpm t
 pnpm-workspace.yaml   workspace: ota-demo + server
 .npmrc                node-linker=hoisted（RN/Metro/CocoaPods 兼容关键，见 docs/06）
 docs/                 全部知识文档（按编号阅读）
-scripts/              link-hoisted-modules.sh / patch-maven-mirror.sh（postinstall 自动执行）
+scripts/              link-hoisted-modules.ts / patch-maven-mirror.ts（postinstall 自动执行）
                       make-ota-art.py（生成资源热更演示图 ota-art.png 的 v1/v2 变体）
 ota-demo/             【workspace 包】Expo 应用（blank-typescript + expo-updates）
   app.json            updates.url 指向 http://192.168.0.105:4747/api/manifest, runtimeVersion "1.0.0"
@@ -61,8 +61,8 @@ node server/publish.ts rollback
 - **选择策略按 commitTime 过滤**：默认 selection policy 会拒绝比内置包更"旧"的更新——发布要在构建之后。
 - **iOS 明文 HTTP**：`ios.infoPlist.NSAppTransportSecurity.NSAllowsArbitraryLoads = true`（仅实验室用，生产请上 HTTPS）。
 - **CocoaPods 在 C locale 下崩溃**：`pod install` 必须带 `LANG=en_US.UTF-8`。
-- **repo.reactnative.dev 极慢**：`scripts/patch-maven-mirror.sh` 已把 Maven 地址替换为 Maven Central，挂在 postinstall 上自动执行。
-- **pnpm 布局**：依赖提升到根 node_modules，`scripts/link-hoisted-modules.sh` 用符号链接对齐原生工程的相对引用。
+- **repo.reactnative.dev 极慢**：`scripts/patch-maven-mirror.ts` 已把 Maven 地址替换为 Maven Central，挂在 postinstall 上自动执行。
+- **pnpm 布局**：依赖提升到根 node_modules，`scripts/link-hoisted-modules.ts` 用符号链接对齐原生工程的相对引用。
 - **真机**：iOS 真机需签名；Android 已预置 `usesCleartextTraffic: true`，`pnpm --dir ota-demo exec expo run:android --variant release` 即可走同一服务器。
 
 更多细节见 [docs/06-排坑指南](docs/06-troubleshooting.md)。
